@@ -13,4 +13,17 @@ bootstrap: ## Bootstrap local environment for first use
 .PHONY: git-hooks
 git-hooks: ## Set up hooks in .githooks
 	@git submodule update --init .githooks ; \
-	git config core.hooksPath .githooks \
+	git config core.hooksPath .githooks
+
+setup-local:
+	virtualenv --python=python3.8 venv
+	source venv/bin/activate
+	pip install -r requirements.txt
+
+env-vars: ## Make env vars required by application
+	@{ \
+		export PYTHONPATH=$(shell pwd)/src; \
+		export LOG_LEVEL=DEBUG; \
+		export ENVIRONMENT=LOCAL; \
+		export APPLICATION="replayer_lambda"; \
+	}
