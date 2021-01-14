@@ -7,3 +7,12 @@ This repo is a base to create new non-Terraform repos, adding the githooks submo
 
 After cloning this repo, please run:  
 `make bootstrap`
+
+
+## Environment variables
+
+api.{environment_short_name}.dataworks.dwp.gov.uk
+
+|Variable name|Example|Description|
+|---|:---:|---:|
+|API_HOST|api.{environment_short_name}.dataworks.dwp.gov.uk|The FQDN of AWS Gateway API
