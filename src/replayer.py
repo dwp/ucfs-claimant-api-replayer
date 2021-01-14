@@ -130,7 +130,6 @@ def replay_original_request(default_credentials, nino, transaction_id, fromDate,
                            aws_region=f'{args.aws_region}',
                            aws_service='execute-api')
 
-
     request_parameters = f'nino={nino}&transactionId={transaction_id}&fromDate={from_date}&toDo={to_date}'
 
     headers = {'Content-Type': 'application/json',
@@ -138,9 +137,10 @@ def replay_original_request(default_credentials, nino, transaction_id, fromDate,
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
     request = requests.post(f'https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails',
-                      data=request_parameters, auth=auth, headers=headers)
+                            data=request_parameters, auth=auth, headers=headers)
 
-    logger.info(f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}')
+    logger.info(
+        f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}')
 
     response = json.load(StringIO(request.text))
 
@@ -156,42 +156,68 @@ def replay_original_request(default_credentials, nino, transaction_id, fromDate,
         return {"claimantFound": response["claimantFound"]}
 
 
-def decrypt_response(response, nino, transaction_id, from_date, to_date):
+def decrypt_response(response: dict, request: dict) -> dict:
+    # Create a deep copy of the response to keep the function pure
+    response = response.copy()
     session = boto3.session.Session(profile_name='decrypt',
                                     region_name=region)
 
     client = session.client('kms')
-    kms_response = client.decrypt(
-        CiphertextBlob=cipher_text_blob
-    )
-    data_key = kms_response['Plaintext']
 
-    if response["claimantFound"] is True:
-        # TODO: Correct this func
-        # Need to unpack decrypt and repack back in place
+    if response.get("claimantFound") is True:
 
-        # TODO What does below do?
-        # nonce_size = 12
-        # nonce = take_home_pay_enc[:nonce_size]
-        # take_home_pay_data = take_home_pay_enc[nonce_size:]
+        for period in response.get("assessmentPeriod", []):
+            amount = period.get("amount")
 
-        aesgcm = AESGCM(data_key)
+            key_id = amount.get("keyId")
+            take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
+            cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        logger.info(f'Beginning to decrypt data", "nino": {nino}, "transaction_id": {transaction_id}, "from_date": {from_date}, "to_date": {to_date}')
-        try:
-            take_home_pay = aesgcm.decrypt(nonce, take_home_pay_data, None).decode("utf-8")
-            logger.info('Decrypted successfully", "nino": {nino}, "transaction_id": {transaction_id}, "from_date": {from_date}, "to_date": {to_date}')
-        except Exception as e:
-            logger.error(
-                f'Failed to decrypt data", "nino": {nino}, "transaction_id": {transaction_id}, "from_date": {from_date}, "to_date": {to_date}, "exception": {e}')
-    else:
-        return response
+            kms_response = client.decrypt(
+                CiphertextBlob=cipher_text_blob,
+                KeyId=key_id
+            )
+            data_key = kms_response['Plaintext']
 
-    return {"claimantFound": response["claimantFound"], "takeHomePay": take_home_pay}
+            nonce_size = 12
+            # Takes the first 12 characters from the take_home_pay string
+            nonce = take_home_pay[:nonce_size]
+
+            # Takes the remaining characters from the take_home_pay string following the first 12
+            take_home_pay = take_home_pay[nonce_size:]
+
+            aesgcm = AESGCM(data_key)
+
+            try:
+                logger.info(
+                    f'Beginning to decrypt data", '
+                    f'"nino": {request.get("nino")}, '
+                    f'"transaction_id": {request.get("transaction_id")}, '
+                    f'"from_date": {request.get("from_date")}, '
+                    f'"to_date": {request.get("to_date")}'
+                )
+                take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
+
+                amount["takeHomePay"] = take_home_pay
+                amount["ciperTextBlob"] = data_key
+
+                period["amount"] = amount
+            except Exception as e:
+                logger.error(
+                    f'Failed to decrypt data", '
+                    f'"nino": {request.get("nino")}, '
+                    f'"transaction_id": {request.get("transaction_id")}, '
+                    f'"from_date": {request.get("from_date")}, '
+                    f'"to_date": {request.get("to_date")}'
+                )
+                logger.error(e)
+
+    # Will return a copy of the response if claimantFound is False
+    # Will return a DECRYPTED copy of the response if claimantFound is True
+    return response
 
 
 def compare_responses(expected, actual):
-
     if expected["claimantFound"] is True and actual["claimantFound"] is True:
         logger.info(f'Comparing response", "claimantFound": "true')
 
@@ -204,13 +230,13 @@ def compare_responses(expected, actual):
     elif expected["claimantFound"] != actual["claimantFound"]:
         logger.error('Records across databases differ", "expected_)
 
-if __name__ == "__main__":
-    try:
-        boto3.setup_default_session(
-            profile_name=args.aws_profile, region_name=args.aws_region
-        )
-        logger.info(os.getcwd())
-        json_content = json.loads(open("resources/event.json", "r").read())
-        handler(json_content, None)
-    except Exception as err:
-        logger.error(f'Exception occurred for invocation", "error_message": "{err.msg}')
+        if __name__ == "__main__":
+            try:
+                boto3.setup_default_session(
+                    profile_name=args.aws_profile, region_name=args.aws_region
+                )
+                logger.info(os.getcwd())
+                json_content = json.loads(open("resources/event.json", "r").read())
+                handler(json_content, None)
+            except Exception as err:
+                logger.error(f'Exception occurred for invocation", "error_message": "{err.msg}')
