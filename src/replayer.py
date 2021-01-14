@@ -177,7 +177,7 @@ def decrypt_response(response: dict, request: dict) -> dict:
                 CiphertextBlob=cipher_text_blob,
                 KeyId=key_id
             )
-            data_key = kms_response['Plaintext']
+            data_key = kms_response.get("Plaintext")
 
             nonce_size = 12
             # Takes the first 12 characters from the take_home_pay string
@@ -228,15 +228,16 @@ def compare_responses(expected, actual):
         exit(0)
 
     elif expected["claimantFound"] != actual["claimantFound"]:
-        logger.error('Records across databases differ", "expected_)
+        logger.error('Records across databases differ", "expected"')
 
-        if __name__ == "__main__":
-            try:
-                boto3.setup_default_session(
-                    profile_name=args.aws_profile, region_name=args.aws_region
-                )
-                logger.info(os.getcwd())
-                json_content = json.loads(open("resources/event.json", "r").read())
-                handler(json_content, None)
-            except Exception as err:
-                logger.error(f'Exception occurred for invocation", "error_message": "{err.msg}')
+
+if __name__ == "__main__":
+    try:
+        boto3.setup_default_session(
+            profile_name=args.aws_profile, region_name=args.aws_region
+        )
+        logger.info(os.getcwd())
+        json_content = json.loads(open("resources/event.json", "r").read())
+        handler(json_content, None)
+    except Exception as err:
+        logger.error(f'Exception occurred for invocation", "error_message": "{err.msg}')
