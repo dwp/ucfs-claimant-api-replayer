@@ -22,12 +22,10 @@ def setup_logging(logger_level):
 
     hostname = socket.gethostname()
 
-    json_format = (
-        '{ "timestamp": "%(asctime)s", "log_level": "%(levelname)s", "message": "%(message)s", '
-        f'"environment": "{args.environment}", "application": "{args.application}", '
-        f'"module": "%(module)s", "process": "%(process)s", '
+    json_format = '{ "timestamp": "%(asctime)s", "log_level": "%(levelname)s", "message": "%(message)s", ' \
+        f'"environment": "{args.environment}", "application": "{args.application}", ' \
+        f'"module": "%(module)s", "process": "%(process)s", ' \
         f'"thread": "[%(thread)s]", "hostname": "{hostname}" }} '
-    )
 
     new_handler.setFormatter(logging.Formatter(json_format))
     the_logger.addHandler(new_handler)
@@ -98,7 +96,7 @@ region = os.environ.get('AWS_REGION')
 
 
 def handler(event, context):
-    #     {"originalRequest": {"request_stuff": "stuff"}, "originalResponse": {"response"}}
+
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
 
@@ -119,7 +117,10 @@ def handler(event, context):
     decrypted_original_response = decrypt_response(original_response, original_request)
     decrypted_actual_response = decrypt_response(actual_response, original_request)
 
-    compare_responses(decrypted_original_response, decrypted_actual_response, original_request)
+    if compare_responses(decrypted_original_response, decrypted_actual_response, original_request):
+        logger.info('Final result", "status": "match')
+    else:
+        logger.info('Final result", "status": "miss')
 
 
 def replay_original_request(default_credentials, nino, transaction_id, fromDate, toDate):
@@ -142,18 +143,7 @@ def replay_original_request(default_credentials, nino, transaction_id, fromDate,
     logger.info(
         f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}')
 
-    response = json.load(StringIO(request.text))
-
-    if response['claimantFound'] is True:
-        key_id = response['assessmentPeriod'][0]['amount']['keyId']
-        take_home_pay_enc = base64.urlsafe_b64decode(response['assessmentPeriod'][0]['amount']['takeHomePay'])
-        cipher_text_blob = base64.urlsafe_b64decode(response['assessmentPeriod'][0]['amount']['cipherTextBlob'])
-
-        return {"claimantFound": response["claimantFound"], "key_id": key_id, "take_home_pay_enc": take_home_pay_enc,
-                "cipher_text_blob": cipher_text_blob}
-
-    else:
-        return {"claimantFound": response["claimantFound"]}
+    return json.load(StringIO(request.text))
 
 
 def decrypt_response(response: dict, request: dict) -> dict:
@@ -164,54 +154,51 @@ def decrypt_response(response: dict, request: dict) -> dict:
 
     client = session.client('kms')
 
-    if response.get("claimantFound") is True:
+    for period in response.get("assessmentPeriod", []):
+        amount = period.get("amount")
 
-        for period in response.get("assessmentPeriod", []):
-            amount = period.get("amount")
+        key_id = amount.get("keyId")
+        take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
+        cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-            key_id = amount.get("keyId")
-            take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
-            cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
+        kms_response = client.decrypt(
+            CiphertextBlob=cipher_text_blob,
+            KeyId=key_id
+        )
+        data_key = kms_response.get("Plaintext")
 
-            kms_response = client.decrypt(
-                CiphertextBlob=cipher_text_blob,
-                KeyId=key_id
+        nonce_size = 12
+        # Takes the first 12 characters from the take_home_pay string
+        nonce = take_home_pay[:nonce_size]
+
+        # Takes the remaining characters from the take_home_pay string following the first 12
+        take_home_pay = take_home_pay[nonce_size:]
+
+        aesgcm = AESGCM(data_key)
+
+        try:
+            logger.info(
+                f'Beginning to decrypt data", '
+                f'"transaction_id": {request.get("transaction_id")}, '
+                f'"from_date": {request.get("from_date")}, '
+                f'"to_date": {request.get("to_date")}'
             )
-            data_key = kms_response.get("Plaintext")
+            take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
 
-            nonce_size = 12
-            # Takes the first 12 characters from the take_home_pay string
-            nonce = take_home_pay[:nonce_size]
+            amount["takeHomePay"] = take_home_pay
+            del amount["ciperTextBlob"]
+            del amount["keyId"]
 
-            # Takes the remaining characters from the take_home_pay string following the first 12
-            take_home_pay = take_home_pay[nonce_size:]
+            period["amount"] = amount
 
-            aesgcm = AESGCM(data_key)
-
-            try:
-                logger.info(
-                    f'Beginning to decrypt data", '
-                    f'"nino": {request.get("nino")}, '
-                    f'"transaction_id": {request.get("transaction_id")}, '
-                    f'"from_date": {request.get("from_date")}, '
-                    f'"to_date": {request.get("to_date")}'
-                )
-                take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
-
-                amount["takeHomePay"] = take_home_pay
-                del amount["ciperTextBlob"]
-                del amount["keyId"]
-
-                period["amount"] = amount
-            except Exception as e:
-                logger.error(
-                    f'Failed to decrypt data", '
-                    f'"nino": {request.get("nino")}, '
-                    f'"transaction_id": {request.get("transaction_id")}, '
-                    f'"from_date": {request.get("from_date")}, '
-                    f'"to_date": {request.get("to_date")}'
-                )
-                logger.error(e)
+        except Exception as e:
+            logger.error(
+                f'Failed to decrypt data", '
+                f'"transaction_id": {request.get("transaction_id")}, '
+                f'"from_date": {request.get("from_date")}, '
+                f'"to_date": {request.get("to_date")}'
+            )
+            logger.error(e)
 
     # Will return a copy of the response if claimantFound is False
     # Will return a DECRYPTED copy of the response if claimantFound is True
@@ -219,7 +206,9 @@ def decrypt_response(response: dict, request: dict) -> dict:
 
 
 def compare_responses(original, actual, request):
+    match = True
     if not (original["claimantFound"] is True and actual["claimantFound"] is True):
+        match = False
         logger.error(f'Claimant found doesn\'t match, '
                      f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}')
 
@@ -228,10 +217,12 @@ def compare_responses(original, actual, request):
         if state is True:
             logger.info('Suspended date is a match", "status": "match')
         else:
+            match = False
             logger.info('Suspended date expected but not found in replayed response", "status": "miss')
 
     else:
         if actual.get("suspendedDate"):
+            match = False
             logger.info('Suspended date not expected but found in replayed response", "status": "miss')
         else:
             logger.info('Suspended date is not expected and not present in either original or replayed response", '
@@ -259,18 +250,20 @@ def compare_responses(original, actual, request):
             all_assessment_period["expected_list"].remove(expected_record)
 
     for record in all_assessment_period["expected_list"]:
+        match = False
         logger.info(f'No match for original response assessment period in replayed assessment period", "status": "miss", '
                     f'"transaction_id": {request["transactionId"]}, '
                     f'"AP_from_date": {record["fromDate"]},'
                     f'"AP_to_date": {record["toDate"]}')
 
     for record in all_assessment_period["actual_list"]:
+        match = False
         logger.info(f'No match for replayed assessment period in original response assessment period", "status": "miss", '
                     f'"transaction_id": {request["transactionId"]}, '
                     f'"AP_from_date": {record["fromDate"]},'
                     f'"AP_to_date": {record["toDate"]')
 
-    return
+    return match
 
 
 if __name__ == "__main__":
