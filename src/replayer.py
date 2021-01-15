@@ -90,8 +90,10 @@ def get_parameters():
 
     return _args
 
+
 args = None
 logger = None
+
 
 def handler(event, context):
     global args
@@ -119,9 +121,7 @@ def handler(event, context):
     except Exception as e:
         logger.error("Attempted to extract event items but was unable.")
 
-    actual_response = replay_original_request(
-        request_auth, request, datetimenow, args
-    )
+    actual_response = replay_original_request(request_auth, request, datetimenow, args)
 
     decrypted_original_response = decrypt_response(original_response, original_request)
     decrypted_actual_response = decrypt_response(actual_response, original_request)
@@ -134,13 +134,13 @@ def handler(event, context):
         logger.info('Final result", "status": "miss')
 
 
-def replay_original_request(
-    request_auth, original_request, datetimenow, args
-    ):
-    request_parameters = f"nino={original_request['nino']}" \
-                         f"&transactionId={original_request['transactionId']}" \
-                         f"&fromDate={original_request['fromDate']}" \
-                         f"&toDo={original_request['toDate']}"
+def replay_original_request(request_auth, original_request, datetimenow, args):
+    request_parameters = (
+        f"nino={original_request['nino']}"
+        f"&transactionId={original_request['transactionId']}"
+        f"&fromDate={original_request['fromDate']}"
+        f"&toDo={original_request['toDate']}"
+    )
 
     headers = {
         "Content-Type": "application/json",

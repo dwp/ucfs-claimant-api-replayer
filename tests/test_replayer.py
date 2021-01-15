@@ -6,8 +6,8 @@ from src.replayer import *
 
 """Tests for the UC Export to Crown Controller Lambda."""
 
-class TestReplayer(unittest.TestCase):
 
+class TestReplayer(unittest.TestCase):
     def test_replay_original_request(self):
         with mock.patch("src.replayer.requests") as request_mock:
             with mock.patch("src.replayer.logger") as logger:
@@ -39,26 +39,35 @@ class TestReplayer(unittest.TestCase):
                 args.hostname = "api.dev.gov.uk"
                 args.api_hostname = "api.dev.gov.uk"
 
-                request_parameters = {"nino": "AA123456A", "transactionId": "42", "fromDate": "20200101", "toDate": "20210101"}
+                request_parameters = {
+                    "nino": "AA123456A",
+                    "transactionId": "42",
+                    "fromDate": "20200101",
+                    "toDate": "20210101",
+                }
 
                 headers = {
                     "Content-Type": "application/json",
                     "X-Amz-Date": "20200113T130000",
                 }
 
-                result = replay_original_request(request_auth, request_parameters, "20200113T130000", args)
+                result = replay_original_request(
+                    request_auth, request_parameters, "20200113T130000", args
+                )
 
                 request_mock.post.assert_called_once_with(
                     f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
                     data="nino=AA123456A&transactionId=42&fromDate=20200101&toDo=20210101",
                     auth=request_auth,
-                    headers=headers
+                    headers=headers,
                 )
 
                 expected_takehome = "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
                 expected_claimantfound = True
 
                 print(result)
-                self.assertEqual(expected_takehome, result["assessmentPeriod"][0]["amount"]["takeHomePay"])
+                self.assertEqual(
+                    expected_takehome,
+                    result["assessmentPeriod"][0]["amount"]["takeHomePay"],
+                )
                 self.assertEqual(expected_claimantfound, result["claimantFound"])
-
