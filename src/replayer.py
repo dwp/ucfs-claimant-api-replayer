@@ -131,10 +131,16 @@ def handler(event, context):
         logger.error(e)
         exit(1)
 
-    actual_response = replay_original_request(request_auth, original_request, datetimenow, args)
+    actual_response = replay_original_request(
+        request_auth, original_request, datetimenow, args
+    )
 
-    decrypted_original_response = decrypt_response(original_response, original_request, args.v2_kms_region)
-    decrypted_actual_response = decrypt_response(actual_response, original_request, args.v1_kms_region)
+    decrypted_original_response = decrypt_response(
+        original_response, original_request, args.v2_kms_region
+    )
+    decrypted_actual_response = decrypt_response(
+        actual_response, original_request, args.v1_kms_region
+    )
 
     if compare_responses(
         decrypted_original_response, decrypted_actual_response, original_request
@@ -268,7 +274,10 @@ def compare_responses(original, actual, request):
     expected_list = original["assessmentPeriod"]
     actual_list = actual["assessmentPeriod"]
 
-    all_assessment_period = {"expected_list": expected_list.copy(), "actual_list": actual_list.copy()}
+    all_assessment_period = {
+        "expected_list": expected_list.copy(),
+        "actual_list": actual_list.copy(),
+    }
 
     for expected_record in expected_list:
         if expected_record in actual_list:
