@@ -46,7 +46,7 @@ def setup_logging(logger_level):
 def get_parameters():
     parser = argparse.ArgumentParser(
         description="An AWS lambda which receives requests and a response payload, "
-                    "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
+        "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
     )
 
     # Parse command line inputs and set defaults
