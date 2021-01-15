@@ -8,7 +8,6 @@ import json
 import datetime
 import requests
 import base64
-from io import StringIO
 from aws_requests_auth.aws_auth import AWSRequestsAuth
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -71,10 +70,10 @@ def get_parameters():
         _args.application = os.environ["APPLICATION"]
 
     if "LOG_LEVEL" in os.environ:
-        _args.application = os.environ["LOG_LEVEL"]
+        _args.log_level = os.environ["LOG_LEVEL"]
 
     if "API_HOSTNAME" in os.environ:
-        _args.application = os.environ["API_HOSTNAME"]
+        _args.hostname = os.environ["API_HOSTNAME"]
 
     required_args = ["API_HOSTNAME"]
     missing_args = []
@@ -91,16 +90,27 @@ def get_parameters():
 
     return _args
 
-
-args = get_parameters()
-logger = setup_logging(args.log_level)
-region = os.environ.get("AWS_REGION")
-
+args = None
+logger = None
 
 def handler(event, context):
+    global args
+    args = get_parameters()
+    global logger
+    logger = setup_logging(args.log_level)
 
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
+    datetimenow = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+    request_auth = AWSRequestsAuth(
+        aws_access_key=default_credentials.access_key,
+        aws_secret_access_key=default_credentials.secret_key,
+        aws_token=default_credentials.token,
+        aws_host=f"{args.api_hostname}",
+        aws_region=f"{args.aws_region}",
+        aws_service="execute-api",
+    )
 
     loaded_event = json.loads(event)
     try:
@@ -109,13 +119,8 @@ def handler(event, context):
     except Exception as e:
         logger.error("Attempted to extract event items but was unable.")
 
-    nino = original_request.get("nino")
-    transaction_id = original_request.get("transaction_id")
-    from_date = original_request.get("from_date")
-    to_date = original_request.get("to_date")
-
     actual_response = replay_original_request(
-        default_credentials, nino, transaction_id, from_date, to_date
+        request_auth, request, datetimenow, args
     )
 
     decrypted_original_response = decrypt_response(original_response, original_request)
@@ -130,29 +135,23 @@ def handler(event, context):
 
 
 def replay_original_request(
-    default_credentials, nino, transaction_id, from_date, to_date
-):
-    auth = AWSRequestsAuth(
-        aws_access_key=default_credentials.access_key,
-        aws_secret_access_key=default_credentials.secret_key,
-        aws_token=default_credentials.token,
-        aws_host=f"{args.api_hostname}",
-        aws_region=f"{args.aws_region}",
-        aws_service="execute-api",
-    )
-
-    request_parameters = f"nino={nino}&transactionId={transaction_id}&fromDate={from_date}&toDo={to_date}"
+    request_auth, original_request, datetimenow, args
+    ):
+    request_parameters = f"nino={original_request['nino']}" \
+                         f"&transactionId={original_request['transactionId']}" \
+                         f"&fromDate={original_request['fromDate']}" \
+                         f"&toDo={original_request['toDate']}"
 
     headers = {
         "Content-Type": "application/json",
-        "X-Amz-Date": datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"),
+        "X-Amz-Date": datetimenow,
     }
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
     request = requests.post(
         f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
         data=request_parameters,
-        auth=auth,
+        auth=request_auth,
         headers=headers,
     )
 
@@ -160,7 +159,7 @@ def replay_original_request(
         f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}'
     )
 
-    return json.load(StringIO(request.text))
+    return json.loads(request.text)
 
 
 def decrypt_response(response: dict, request: dict) -> dict:
