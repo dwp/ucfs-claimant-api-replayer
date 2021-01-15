@@ -126,8 +126,9 @@ def handler(event, context):
     try:
         original_request = loaded_event["Body"]["originalRequest"]
         original_response = loaded_event["Body"]["originalResponse"]
-    except Exception as e:
+    except KeyError as e:
         logger.error("Attempted to extract event items but was unable.")
+        raise e
         logger.error(e)
         exit(1)
 
