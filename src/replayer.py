@@ -11,6 +11,9 @@ import base64
 from aws_requests_auth.aws_auth import AWSRequestsAuth
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+# TODO: Ensure from_date & to_date can be optional
+# TODO: Finish the 3 test placeholders, enable GHA & uncomment Make command
+
 
 def setup_logging(logger_level):
     the_logger = logging.getLogger()
@@ -42,7 +45,8 @@ def setup_logging(logger_level):
 
 def get_parameters():
     parser = argparse.ArgumentParser(
-        description="Convert S3 objects into Kafka messages"
+        description="An AWS lambda which receives requests and a response payload, "
+                    "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
     )
 
     # Parse command line inputs and set defaults
@@ -54,7 +58,7 @@ def get_parameters():
     parser.add_argument("--api-region", default="eu-west-1")
     parser.add_argument("--v1-kms-region", default="eu-west-2")
     parser.add_argument("--v2-kms-region", default="eu-west-1")
-    parser.add_argument("--api-hostname", default="NOT_SET")
+    parser.add_argument("--api-hostname")
 
     _args = parser.parse_args()
 
@@ -128,9 +132,8 @@ def handler(event, context):
         original_response = loaded_event["Body"]["originalResponse"]
     except KeyError as e:
         logger.error("Attempted to extract event items but was unable.")
-        raise e
         logger.error(e)
-        exit(1)
+        raise e
 
     actual_response = replay_original_request(
         request_auth, original_request, datetimenow, args
@@ -151,17 +154,12 @@ def handler(event, context):
         logger.info('Final result", "status": "miss')
 
 
-def replay_original_request(request_auth, original_request, datetimenow, args):
-    request_parameters = (
-        f"nino={original_request['nino']}"
-        f"&transactionId={original_request['transactionId']}"
-        f"&fromDate={original_request['fromDate']}"
-        f"&toDo={original_request['toDate']}"
-    )
+def replay_original_request(request_auth, original_request, date_time_now, args):
+    request_parameters = "&".join([f"{k}={v}" for k, v in original_request.items()])
 
     headers = {
         "Content-Type": "application/json",
-        "X-Amz-Date": datetimenow,
+        "X-Amz-Date": date_time_now,
     }
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
@@ -189,11 +187,10 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
     for period in response.get("assessmentPeriod", []):
         amount = period.get("amount")
 
-        key_id = amount.get("keyId")
         take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob, KeyId=key_id)
+        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob)
         data_key = kms_response.get("Plaintext")
 
         nonce_size = 12
@@ -228,29 +225,27 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
                 f'"to_date": {request.get("to_date")}'
             )
             logger.error(e)
+            raise e
 
-    # Will return a copy of the response if claimantFound is False
-    # Will return a DECRYPTED copy of the response if claimantFound is True
     return response
 
 
 def compare_responses(original, actual, request):
     match = True
-    if not (original["claimantFound"] is True and actual["claimantFound"] is True):
+    if original["claimantFound"] != actual["claimantFound"]:
         match = False
-        logger.error(
+        logger.info(
             f"Claimant found doesn't match, "
             f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}'
         )
 
     if original.get("suspendedDate"):
-        state = original["suspendedDate"] == actual["suspendedDate"]
-        if state is True:
+        if original["suspendedDate"] == actual["suspendedDate"]:
             logger.info('Suspended date is a match", "status": "match')
         else:
             match = False
             logger.info(
-                'Suspended date expected but not found in replayed response", "status": "miss'
+                'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
             )
 
     else:

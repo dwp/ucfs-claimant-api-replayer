@@ -27,3 +27,6 @@ env-vars: ## Make env vars required by application
 		export ENVIRONMENT=LOCAL; \
 		export APPLICATION="replayer_lambda"; \
 	}
+
+#unittest:
+#	tox
