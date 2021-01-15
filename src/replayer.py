@@ -46,12 +46,14 @@ def get_parameters():
     )
 
     # Parse command line inputs and set defaults
+    # TODO: Update README to match these changes
     parser.add_argument("--aws-profile", default="default")
-    parser.add_argument("--aws-region", default="eu-west-2")
     parser.add_argument("--environment", default="NOT_SET")
     parser.add_argument("--application", default="NOT_SET")
     parser.add_argument("--log-level", default="INFO")
-    parser.add_argument("--aws-region", default="eu-west-1")
+    parser.add_argument("--api-region", default="eu-west-1")
+    parser.add_argument("--v1-kms-region", default="eu-west-2")
+    parser.add_argument("--v2-kms-region", default="eu-west-1")
     parser.add_argument("--api-hostname", default="NOT_SET")
 
     _args = parser.parse_args()
@@ -60,8 +62,14 @@ def get_parameters():
     if "AWS_PROFILE" in os.environ:
         _args.aws_profile = os.environ["AWS_PROFILE"]
 
-    if "AWS_REGION" in os.environ:
-        _args.aws_region = os.environ["AWS_REGION"]
+    if "API_REGION" in os.environ:
+        _args.api_region = os.environ["API_REGION"]
+
+    if "V1_KMS_REGION" in os.environ:
+        _args.v1_kms_region = os.environ["V1_KMS_REGION"]
+
+    if "V2_KMS_REGION" in os.environ:
+        _args.v2_kms_region = os.environ["V2_KMS_REGION"]
 
     if "ENVIRONMENT" in os.environ:
         _args.environment = os.environ["ENVIRONMENT"]
@@ -110,7 +118,7 @@ def handler(event, context):
         aws_secret_access_key=default_credentials.secret_key,
         aws_token=default_credentials.token,
         aws_host=f"{args.api_hostname}",
-        aws_region=f"{args.aws_region}",
+        aws_region=f"{args.api_region}",
         aws_service="execute-api",
     )
 
@@ -120,11 +128,13 @@ def handler(event, context):
         original_response = loaded_event["Body"]["originalResponse"]
     except Exception as e:
         logger.error("Attempted to extract event items but was unable.")
+        logger.error(e)
+        exit(1)
 
-    actual_response = replay_original_request(request_auth, request, datetimenow, args)
+    actual_response = replay_original_request(request_auth, original_request, datetimenow, args)
 
-    decrypted_original_response = decrypt_response(original_response, original_request)
-    decrypted_actual_response = decrypt_response(actual_response, original_request)
+    decrypted_original_response = decrypt_response(original_response, original_request, args.v2_kms_region)
+    decrypted_actual_response = decrypt_response(actual_response, original_request, args.v1_kms_region)
 
     if compare_responses(
         decrypted_original_response, decrypted_actual_response, original_request
@@ -162,7 +172,7 @@ def replay_original_request(request_auth, original_request, datetimenow, args):
     return json.loads(request.text)
 
 
-def decrypt_response(response: dict, request: dict) -> dict:
+def decrypt_response(response: dict, request: dict, region: str) -> dict:
     # Create a deep copy of the response to keep the function pure
     response = response.copy()
     session = boto3.session.Session(profile_name="decrypt", region_name=region)
@@ -258,7 +268,7 @@ def compare_responses(original, actual, request):
     expected_list = original["assessmentPeriod"]
     actual_list = actual["assessmentPeriod"]
 
-    all_assessment_period = {"expected_list": expected_list, "actual_list": actual_list}
+    all_assessment_period = {"expected_list": expected_list.copy(), "actual_list": actual_list.copy()}
 
     for expected_record in expected_list:
         if expected_record in actual_list:
