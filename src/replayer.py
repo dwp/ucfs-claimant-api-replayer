@@ -22,10 +22,12 @@ def setup_logging(logger_level):
 
     hostname = socket.gethostname()
 
-    json_format = '{ "timestamp": "%(asctime)s", "log_level": "%(levelname)s", "message": "%(message)s", ' \
-        f'"environment": "{args.environment}", "application": "{args.application}", ' \
-        f'"module": "%(module)s", "process": "%(process)s", ' \
+    json_format = (
+        '{ "timestamp": "%(asctime)s", "log_level": "%(levelname)s", "message": "%(message)s", '
+        f'"environment": "{args.environment}", "application": "{args.application}", '
+        f'"module": "%(module)s", "process": "%(process)s", '
         f'"thread": "[%(thread)s]", "hostname": "{hostname}" }} '
+    )
 
     new_handler.setFormatter(logging.Formatter(json_format))
     the_logger.addHandler(new_handler)
@@ -92,7 +94,7 @@ def get_parameters():
 
 args = get_parameters()
 logger = setup_logging(args.log_level)
-region = os.environ.get('AWS_REGION')
+region = os.environ.get("AWS_REGION")
 
 
 def handler(event, context):
@@ -112,36 +114,51 @@ def handler(event, context):
     from_date = original_request.get("from_date")
     to_date = original_request.get("to_date")
 
-    actual_response = replay_original_request(default_credentials, nino, transaction_id, from_date, to_date)
+    actual_response = replay_original_request(
+        default_credentials, nino, transaction_id, from_date, to_date
+    )
 
     decrypted_original_response = decrypt_response(original_response, original_request)
     decrypted_actual_response = decrypt_response(actual_response, original_request)
 
-    if compare_responses(decrypted_original_response, decrypted_actual_response, original_request):
+    if compare_responses(
+        decrypted_original_response, decrypted_actual_response, original_request
+    ):
         logger.info('Final result", "status": "match')
     else:
         logger.info('Final result", "status": "miss')
 
 
-def replay_original_request(default_credentials, nino, transaction_id, fromDate, toDate):
-    auth = AWSRequestsAuth(aws_access_key=default_credentials.access_key,
-                           aws_secret_access_key=default_credentials.secret_key,
-                           aws_token=default_credentials.token,
-                           aws_host=f'{args.api_hostname}',
-                           aws_region=f'{args.aws_region}',
-                           aws_service='execute-api')
+def replay_original_request(
+    default_credentials, nino, transaction_id, from_date, to_date
+):
+    auth = AWSRequestsAuth(
+        aws_access_key=default_credentials.access_key,
+        aws_secret_access_key=default_credentials.secret_key,
+        aws_token=default_credentials.token,
+        aws_host=f"{args.api_hostname}",
+        aws_region=f"{args.aws_region}",
+        aws_service="execute-api",
+    )
 
-    request_parameters = f'nino={nino}&transactionId={transaction_id}&fromDate={from_date}&toDo={to_date}'
+    request_parameters = f"nino={nino}&transactionId={transaction_id}&fromDate={from_date}&toDo={to_date}"
 
-    headers = {'Content-Type': 'application/json',
-               'X-Amz-Date': datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}
+    headers = {
+        "Content-Type": "application/json",
+        "X-Amz-Date": datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"),
+    }
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
-    request = requests.post(f'https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails',
-                            data=request_parameters, auth=auth, headers=headers)
+    request = requests.post(
+        f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
+        data=request_parameters,
+        auth=auth,
+        headers=headers,
+    )
 
     logger.info(
-        f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}')
+        f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}'
+    )
 
     return json.load(StringIO(request.text))
 
@@ -149,10 +166,9 @@ def replay_original_request(default_credentials, nino, transaction_id, fromDate,
 def decrypt_response(response: dict, request: dict) -> dict:
     # Create a deep copy of the response to keep the function pure
     response = response.copy()
-    session = boto3.session.Session(profile_name='decrypt',
-                                    region_name=region)
+    session = boto3.session.Session(profile_name="decrypt", region_name=region)
 
-    client = session.client('kms')
+    client = session.client("kms")
 
     for period in response.get("assessmentPeriod", []):
         amount = period.get("amount")
@@ -161,10 +177,7 @@ def decrypt_response(response: dict, request: dict) -> dict:
         take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        kms_response = client.decrypt(
-            CiphertextBlob=cipher_text_blob,
-            KeyId=key_id
-        )
+        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob, KeyId=key_id)
         data_key = kms_response.get("Plaintext")
 
         nonce_size = 12
@@ -209,8 +222,10 @@ def compare_responses(original, actual, request):
     match = True
     if not (original["claimantFound"] is True and actual["claimantFound"] is True):
         match = False
-        logger.error(f'Claimant found doesn\'t match, '
-                     f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}')
+        logger.error(
+            f"Claimant found doesn't match, "
+            f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}'
+        )
 
     if original.get("suspendedDate"):
         state = original["suspendedDate"] == actual["suspendedDate"]
@@ -218,21 +233,28 @@ def compare_responses(original, actual, request):
             logger.info('Suspended date is a match", "status": "match')
         else:
             match = False
-            logger.info('Suspended date expected but not found in replayed response", "status": "miss')
+            logger.info(
+                'Suspended date expected but not found in replayed response", "status": "miss'
+            )
 
     else:
         if actual.get("suspendedDate"):
             match = False
-            logger.info('Suspended date not expected but found in replayed response", "status": "miss')
+            logger.info(
+                'Suspended date not expected but found in replayed response", "status": "miss'
+            )
         else:
-            logger.info('Suspended date is not expected and not present in either original or replayed response", '
-                        '"status": "match')
+            logger.info(
+                'Suspended date is not expected and not present in either original or replayed response", '
+                '"status": "match'
+            )
 
-    logger.info(f'Comparing responses", '
-                f'"transaction_id": {request.get("transactionId")}, '
-                f'"from_date": {request.get("fromDate")}, '
-                f'"to_date": {request.get("toDate")}'
-                )
+    logger.info(
+        f'Comparing responses", '
+        f'"transaction_id": {request.get("transactionId")}, '
+        f'"from_date": {request.get("fromDate")}, '
+        f'"to_date": {request.get("toDate")}'
+    )
 
     expected_list = original["assessmentPeriod"]
     actual_list = actual["assessmentPeriod"]
@@ -241,27 +263,33 @@ def compare_responses(original, actual, request):
 
     for expected_record in expected_list:
         if expected_record in actual_list:
-            logger.info(f'Match for assessment period", "status": "match", '
-                        f'"transaction_id": {request["transactionId"]}, '
-                        f'"AP_from_date": {expected_record["fromDate"]},'
-                        f'"AP_to_date": {expected_record["toDate"]}')
+            logger.info(
+                f'Match for assessment period", "status": "match", '
+                f'"transaction_id": {request["transactionId"]}, '
+                f'"AP_from_date": {expected_record["fromDate"]},'
+                f'"AP_to_date": {expected_record["toDate"]}'
+            )
 
             all_assessment_period["actual_list"].remove(expected_record)
             all_assessment_period["expected_list"].remove(expected_record)
 
     for record in all_assessment_period["expected_list"]:
         match = False
-        logger.info(f'No match for original response assessment period in replayed assessment period", "status": "miss", '
-                    f'"transaction_id": {request["transactionId"]}, '
-                    f'"AP_from_date": {record["fromDate"]},'
-                    f'"AP_to_date": {record["toDate"]}')
+        logger.info(
+            f'No match for original response assessment period in replayed assessment period", "status": "miss", '
+            f'"transaction_id": {request["transactionId"]}, '
+            f'"AP_from_date": {record["fromDate"]},'
+            f'"AP_to_date": {record["toDate"]}'
+        )
 
     for record in all_assessment_period["actual_list"]:
         match = False
-        logger.info(f'No match for replayed assessment period in original response assessment period", "status": "miss", '
-                    f'"transaction_id": {request["transactionId"]}, '
-                    f'"AP_from_date": {record["fromDate"]},'
-                    f'"AP_to_date": {record["toDate"]')
+        logger.info(
+            f'No match for replayed assessment period in original response assessment period", "status": "miss", '
+            f'"transaction_id": {request["transactionId"]}, '
+            f'"AP_from_date": {record["fromDate"]},'
+            f'"AP_to_date": {record["toDate"]}'
+        )
 
     return match
 
