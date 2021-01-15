@@ -119,7 +119,7 @@ def handler(event, context):
     decrypted_original_response = decrypt_response(original_response, original_request)
     decrypted_actual_response = decrypt_response(actual_response, original_request)
 
-    compare_responses(decrypted_original_response, decrypted_actual_response)
+    compare_responses(decrypted_original_response, decrypted_actual_response, original_request)
 
 
 def replay_original_request(default_credentials, nino, transaction_id, fromDate, toDate):
@@ -199,7 +199,8 @@ def decrypt_response(response: dict, request: dict) -> dict:
                 take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
 
                 amount["takeHomePay"] = take_home_pay
-                amount["ciperTextBlob"] = data_key
+                del amount["ciperTextBlob"]
+                del amount["keyId"]
 
                 period["amount"] = amount
             except Exception as e:
@@ -217,18 +218,59 @@ def decrypt_response(response: dict, request: dict) -> dict:
     return response
 
 
-def compare_responses(expected, actual):
-    if expected["claimantFound"] is True and actual["claimantFound"] is True:
-        logger.info(f'Comparing response", "claimantFound": "true')
+def compare_responses(original, actual, request):
+    if not (original["claimantFound"] is True and actual["claimantFound"] is True):
+        logger.error(f'Claimant found doesn\'t match, '
+                     f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}')
 
-        # TODO: compare toDate and fromDate for each record also
-        comparison = expected["takeHomePay"] == actual["takeHomePay"]
+    if original.get("suspendedDate"):
+        state = original["suspendedDate"] == actual["suspendedDate"]
+        if state is True:
+            logger.info('Suspended date is a match", "status": "match')
+        else:
+            logger.info('Suspended date expected but not found in replayed response", "status": "miss')
 
-        logger.info(f'Compared values are equal')
-        exit(0)
+    else:
+        if actual.get("suspendedDate"):
+            logger.info('Suspended date not expected but found in replayed response", "status": "miss')
+        else:
+            logger.info('Suspended date is not expected and not present in either original or replayed response", '
+                        '"status": "match')
 
-    elif expected["claimantFound"] != actual["claimantFound"]:
-        logger.error('Records across databases differ", "expected"')
+    logger.info(f'Comparing responses", '
+                f'"transaction_id": {request.get("transactionId")}, '
+                f'"from_date": {request.get("fromDate")}, '
+                f'"to_date": {request.get("toDate")}'
+                )
+
+    expected_list = original["assessmentPeriod"]
+    actual_list = actual["assessmentPeriod"]
+
+    all_assessment_period = {"expected_list": expected_list, "actual_list": actual_list}
+
+    for expected_record in expected_list:
+        if expected_record in actual_list:
+            logger.info(f'Match for assessment period", "status": "match", '
+                        f'"transaction_id": {request["transactionId"]}, '
+                        f'"AP_from_date": {expected_record["fromDate"]},'
+                        f'"AP_to_date": {expected_record["toDate"]}')
+
+            all_assessment_period["actual_list"].remove(expected_record)
+            all_assessment_period["expected_list"].remove(expected_record)
+
+    for record in all_assessment_period["expected_list"]:
+        logger.info(f'No match for original response assessment period in replayed assessment period", "status": "miss", '
+                    f'"transaction_id": {request["transactionId"]}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]}')
+
+    for record in all_assessment_period["actual_list"]:
+        logger.info(f'No match for replayed assessment period in original response assessment period", "status": "miss", '
+                    f'"transaction_id": {request["transactionId"]}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]')
+
+    return
 
 
 if __name__ == "__main__":
