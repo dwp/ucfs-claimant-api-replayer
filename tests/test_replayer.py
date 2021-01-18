@@ -247,9 +247,13 @@ class TestReplayer(unittest.TestCase):
         actual_data["suspendedDate"] = "1234"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data_copy, actual_data, request_parameters)
+            result = compare_responses(
+                original_data_copy, actual_data, request_parameters
+            )
 
-            mock_logger.info.assert_any_call('Suspended date is a match", "status": "match')
+            mock_logger.info.assert_any_call(
+                'Suspended date is a match", "status": "match'
+            )
 
             mock_logger.info.assert_any_call(
                 f'Comparing responses", '
@@ -276,7 +280,9 @@ class TestReplayer(unittest.TestCase):
         original_data_copy["suspendedDate"] = "1234"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data_copy, actual_data, request_parameters)
+            result = compare_responses(
+                original_data_copy, actual_data, request_parameters
+            )
 
             mock_logger.info.assert_any_call(
                 'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
@@ -308,7 +314,9 @@ class TestReplayer(unittest.TestCase):
         actual_data["suspendedDate"] = "4321"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data_copy, actual_data, request_parameters)
+            result = compare_responses(
+                original_data_copy, actual_data, request_parameters
+            )
 
             mock_logger.info.assert_any_call(
                 'Suspended date expected but does not match or was not found in replayed response", "status": "miss'

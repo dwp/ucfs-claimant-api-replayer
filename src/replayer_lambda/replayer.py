@@ -43,7 +43,7 @@ def setup_logging(logger_level):
 def get_parameters():
     parser = argparse.ArgumentParser(
         description="An AWS lambda which receives requests and a response payload, "
-                    "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
+        "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
     )
 
     # Parse command line inputs and set defaults
@@ -83,12 +83,7 @@ def get_parameters():
     if "API_HOSTNAME" in os.environ:
         _args.hostname = os.environ["API_HOSTNAME"]
 
-    required_args = [
-        "API_REGION",
-        "V1_KMS_REGION",
-        "V2_KMS_REGION",
-        "API_HOSTNAME"
-    ]
+    required_args = ["API_REGION", "V1_KMS_REGION", "V2_KMS_REGION", "API_HOSTNAME"]
     missing_args = []
     for required_message_key in required_args:
         if required_message_key not in _args:
@@ -148,7 +143,7 @@ def handler(event, context):
     )
 
     if compare_responses(
-            decrypted_original_response, decrypted_actual_response, original_request
+        decrypted_original_response, decrypted_actual_response, original_request
     ):
         logger.info('Final result", "status": "match')
     else:
