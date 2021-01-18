@@ -160,7 +160,7 @@ def replay_original_request(request_auth, original_request, date_time_now, args)
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
     request = requests.post(
-        f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
+        f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
         data=request_parameters,
         auth=request_auth,
         headers=headers,
