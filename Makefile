@@ -28,5 +28,5 @@ env-vars: ## Make env vars required by application
 		export APPLICATION="replayer_lambda"; \
 	}
 
-#unittest:
-#	tox
+unittest:
+	tox
