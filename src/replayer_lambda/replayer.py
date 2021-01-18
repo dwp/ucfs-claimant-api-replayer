@@ -108,6 +108,7 @@ def handler(event, context):
     args = get_parameters()
     global logger
     logger = setup_logging(args.log_level)
+    logger.info(f"Event: {event}")
 
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
@@ -122,10 +123,9 @@ def handler(event, context):
         aws_service="execute-api",
     )
 
-    loaded_event = json.loads(event)
     try:
-        original_request = loaded_event["Body"]["originalRequest"]
-        original_response = loaded_event["Body"]["originalResponse"]
+        original_request = json.loads(event["Body"]["originalRequest"])
+        original_response = json.loads(event["Body"]["originalResponse"])
     except KeyError as e:
         logger.error("Attempted to extract event items but was unable.")
         logger.error(e)
