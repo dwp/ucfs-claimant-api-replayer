@@ -124,8 +124,8 @@ def handler(event, context):
     )
 
     try:
-        original_request = json.loads(event["Body"]["originalRequest"])
-        original_response = json.loads(event["Body"]["originalResponse"])
+        original_request = json.loads(event["originalRequest"])
+        original_response = json.loads(event["originalResponse"])
     except KeyError as e:
         logger.error("Attempted to extract event items but was unable.")
         logger.error(e)
