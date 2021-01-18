@@ -42,7 +42,7 @@ jobs:
           cp src/*.py artifacts/
       - name: Produce zip
         working-directory: ./artifacts
-        run: zip -qq -r ../${{ github.repository }}-${{ needs.get-publish-version.outputs.publish-version }}.zip *
+        run: zip -qq -r ../ucfs-claimant-api-replayer-${{ needs.get-publish-version.outputs.publish-version }}.zip *
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@latest
