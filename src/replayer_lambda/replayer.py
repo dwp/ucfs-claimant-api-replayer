@@ -11,8 +11,6 @@ import base64
 from aws_requests_auth.aws_auth import AWSRequestsAuth
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-# TODO: Finish the 3 test placeholders, enable GHA & uncomment Make command
-
 
 def setup_logging(logger_level):
     the_logger = logging.getLogger()
@@ -45,7 +43,7 @@ def setup_logging(logger_level):
 def get_parameters():
     parser = argparse.ArgumentParser(
         description="An AWS lambda which receives requests and a response payload, "
-        "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
+                    "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
     )
 
     # Parse command line inputs and set defaults
@@ -150,7 +148,7 @@ def handler(event, context):
     )
 
     if compare_responses(
-        decrypted_original_response, decrypted_actual_response, original_request
+            decrypted_original_response, decrypted_actual_response, original_request
     ):
         logger.info('Final result", "status": "match')
     else:
@@ -243,7 +241,7 @@ def compare_responses(original, actual, request):
         )
 
     if original.get("suspendedDate"):
-        if original["suspendedDate"] == actual["suspendedDate"]:
+        if original.get("suspendedDate") == actual.get("suspendedDate"):
             logger.info('Suspended date is a match", "status": "match')
         else:
             match = False

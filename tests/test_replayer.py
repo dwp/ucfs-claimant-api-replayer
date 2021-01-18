@@ -3,7 +3,7 @@
 import unittest
 from copy import deepcopy
 from unittest import mock
-from src.replayer import *
+from replayer_lambda.replayer import *
 
 """Tests for the UC Export to Crown Controller Lambda."""
 
@@ -50,8 +50,8 @@ request_parameters = {
 
 class TestReplayer(unittest.TestCase):
     def test_replay_original_request(self):
-        with mock.patch("src.replayer.requests") as request_mock:
-            with mock.patch("src.replayer.logger"):
+        with mock.patch("replayer_lambda.replayer.requests") as request_mock:
+            with mock.patch("replayer_lambda.replayer.logger"):
                 data = """
                 {
                   "claimantFound": true,
@@ -105,9 +105,9 @@ class TestReplayer(unittest.TestCase):
 
     def test_compare_responses_happy_path(self):
         # Copying & leaving unchanged for happy comparison
-        actual_data = original_data.copy()
+        actual_data = deepcopy(original_data)
 
-        with mock.patch("src.replayer.logger") as mock_logger:
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
             result = compare_responses(original_data, actual_data, request_parameters)
 
             mock_logger.info.assert_any_call(
@@ -137,7 +137,7 @@ class TestReplayer(unittest.TestCase):
         actual_data = deepcopy(original_data)
         actual_data["assessmentPeriod"][-1]["amount"]["takeHomePay"] = "54.66"
 
-        with mock.patch("src.replayer.logger") as mock_logger:
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
             result = compare_responses(original_data, actual_data, request_parameters)
 
             mock_logger.info.assert_any_call(
@@ -179,10 +179,131 @@ class TestReplayer(unittest.TestCase):
             self.assertFalse(result)
 
     def test_compare_responses_with_suspended_date_present_in_both(self):
-        pass
+        # Making copies of the original data as to not change it
+        original_data_copy = deepcopy(original_data)
+        actual_data = deepcopy(original_data)
+
+        original_data_copy["suspendedDate"] = "1234"
+        actual_data["suspendedDate"] = "1234"
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            result = compare_responses(original_data_copy, actual_data, request_parameters)
+
+            mock_logger.info.assert_any_call('Suspended date is a match", "status": "match')
+
+            mock_logger.info.assert_any_call(
+                f'Comparing responses", '
+                f'"transaction_id": {request_parameters.get("transactionId")}, '
+                f'"from_date": {request_parameters.get("fromDate")}, '
+                f'"to_date": {request_parameters.get("toDate")}'
+            )
+
+            for record in original_data.get("assessmentPeriod", []):
+                mock_logger.info.assert_any_call(
+                    f'Match for assessment period", "status": "match", '
+                    f'"transaction_id": {request_parameters.get("transactionId")}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]}'
+                )
+
+            self.assertTrue(result)
 
     def test_compare_responses_with_suspended_date_in_original_only(self):
-        pass
+        # Making copies of the original data as to not change it
+        original_data_copy = deepcopy(original_data)
+        actual_data = deepcopy(original_data)
+
+        original_data_copy["suspendedDate"] = "1234"
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            result = compare_responses(original_data_copy, actual_data, request_parameters)
+
+            mock_logger.info.assert_any_call(
+                'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
+            )
+
+            mock_logger.info.assert_any_call(
+                f'Comparing responses", '
+                f'"transaction_id": {request_parameters.get("transactionId")}, '
+                f'"from_date": {request_parameters.get("fromDate")}, '
+                f'"to_date": {request_parameters.get("toDate")}'
+            )
+
+            for record in original_data.get("assessmentPeriod", []):
+                mock_logger.info.assert_any_call(
+                    f'Match for assessment period", "status": "match", '
+                    f'"transaction_id": {request_parameters.get("transactionId")}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]}'
+                )
+
+            self.assertFalse(result)
+
+    def test_compare_responses_with_suspendedDate_present_in_both_but_mismatch(self):
+        # Making copies of the original data as to not change it
+        original_data_copy = deepcopy(original_data)
+        actual_data = deepcopy(original_data)
+
+        original_data_copy["suspendedDate"] = "1234"
+        actual_data["suspendedDate"] = "4321"
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            result = compare_responses(original_data_copy, actual_data, request_parameters)
+
+            mock_logger.info.assert_any_call(
+                'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
+            )
+
+            mock_logger.info.assert_any_call(
+                f'Comparing responses", '
+                f'"transaction_id": {request_parameters.get("transactionId")}, '
+                f'"from_date": {request_parameters.get("fromDate")}, '
+                f'"to_date": {request_parameters.get("toDate")}'
+            )
+
+            for record in original_data.get("assessmentPeriod", []):
+                mock_logger.info.assert_any_call(
+                    f'Match for assessment period", "status": "match", '
+                    f'"transaction_id": {request_parameters.get("transactionId")}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]}'
+                )
+
+            self.assertFalse(result)
 
     def test_compare_responses_with_claimantFound_mismatch(self):
-        pass
+        # Making copies of the original data as to not change it
+        actual_data = deepcopy(original_data)
+
+        actual_data["claimantFound"] = False
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            result = compare_responses(original_data, actual_data, request_parameters)
+
+            mock_logger.info.assert_any_call(
+                f"Claimant found doesn't match, "
+                f'expected {original_data["claimantFound"]} from replayed response '
+                f'but got {actual_data["claimantFound"]}'
+            )
+
+            mock_logger.info.assert_any_call(
+                'Suspended date is not expected and not present in either original or replayed response", '
+                '"status": "match'
+            )
+
+            mock_logger.info.assert_any_call(
+                f'Comparing responses", '
+                f'"transaction_id": {request_parameters.get("transactionId")}, '
+                f'"from_date": {request_parameters.get("fromDate")}, '
+                f'"to_date": {request_parameters.get("toDate")}'
+            )
+
+            for record in original_data.get("assessmentPeriod", []):
+                mock_logger.info.assert_any_call(
+                    f'Match for assessment period", "status": "match", '
+                    f'"transaction_id": {request_parameters.get("transactionId")}, '
+                    f'"AP_from_date": {record["fromDate"]},'
+                    f'"AP_to_date": {record["toDate"]}'
+                )
+
+            self.assertFalse(result)
