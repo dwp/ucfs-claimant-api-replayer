@@ -161,6 +161,9 @@ class TestReplayer(unittest.TestCase):
                 )
                 self.assertTrue(result["claimantFound"])
 
+                self.assertNotIn("fromDate", result["assessmentPeriod"][0].keys())
+                self.assertNotIn("toDate", result["assessmentPeriod"][0].keys())
+
     def test_compare_responses_happy_path(self):
         # Copying & leaving unchanged for happy comparison
         actual_data = deepcopy(original_data)
