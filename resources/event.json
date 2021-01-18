@@ -1,6 +1,6 @@
 {
-  "body": {
-    "originalRequest": {},
-    "originalResponse": {}
+  "Body": {
+    "originalRequest": "{ \"nino\": \"xFJrf8lbU4G-LB3gx6uF0z531bs0DIVYQ5o5514Y5OrrlxEriQ_W-jEum6bgveIL9gFwwRswDXz8lgqmTQCgFg==\", \"transactionId\": \"42\", \"fromDate\": \"20280101\", \"toDate\": \"20280401\" }",
+    "originalResponse": "{ \"claimantFound\": true, \"assessmentPeriod\": [ { \"fromDate\": \"20280301\", \"toDate\": \"20280331\", \"amount\": { \"keyId\": \"arn:aws:kms:eu-west-2:123456789022:key/this-needs-changing\", \"takeHomePay\": \"V0Ql0D8oa5KUZ07X4bo7_dZEBqfnqJvsFoOFlaYprId09A==\", \"cipherTextBlob\": \"AQIDAHj9h58lilpdAb1LxcYWnGqZXE9-s8QOd3PvuEYXu5VXSAHPM4cCwSydzi5rURRn_6oCAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMC2Xxsfnx43Jyn28WAgEQgDuXR5n9DN6OiHTrgXC2L1Fs1Zkk07VUY-gkf1gmeuGikSrtGmi9BhW3lFFIEH8ttw_fszIsRlF1zXnRQA==\" } }, { \"fromDate\": \"20280201\", \"toDate\": \"20280228\", \"amount\": { \"keyId\": \"arn:aws:kms:eu-west-2:123456789022:key/this-needs-changing\", \"takeHomePay\": \"fxvO4XO7YqZa6A2PqY1Nz18E2kAg4IguI8FcsbO9Z7U29w==\", \"cipherTextBlob\": \"AQIDAHj9h58lilpdAb1LxcYWnGqZXE9-s8QOd3PvuEYXu5VXSAHPM4cCwSydzi5rURRn_6oCAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMC2Xxsfnx43Jyn28WAgEQgDuXR5n9DN6OiHTrgXC2L1Fs1Zkk07VUY-gkf1gmeuGikSrtGmi9BhW3lFFIEH8ttw_fszIsRlF1zXnRQA==\" } }, { \"fromDate\": \"20280101\", \"toDate\": \"20280131\", \"amount\": { \"keyId\": \"arn:aws:kms:eu-west-2:123456789022:key/this-needs-changing\", \"takeHomePay\": \"UU1iR68SGXlB70gYhQqP8NT1dZYCWexNaejTwR9RoouuhA==\", \"cipherTextBlob\": \"AQIDAHj9h58lilpdAb1LxcYWnGqZXE9-s8QOd3PvuEYXu5VXSAHPM4cCwSydzi5rURRn_6oCAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMC2Xxsfnx43Jyn28WAgEQgDuXR5n9DN6OiHTrgXC2L1Fs1Zkk07VUY-gkf1gmeuGikSrtGmi9BhW3lFFIEH8ttw_fszIsRlF1zXnRQA==\" } } ] }"
   }
 }

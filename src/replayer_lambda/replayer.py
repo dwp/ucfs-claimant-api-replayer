@@ -62,6 +62,9 @@ def get_parameters():
     if "AWS_PROFILE" in os.environ:
         _args.aws_profile = os.environ["AWS_PROFILE"]
 
+    if "AWS_REGION" in os.environ:
+        _args.aws_region = os.environ["AWS_REGION"]
+
     if "API_REGION" in os.environ:
         _args.api_region = os.environ["API_REGION"]
 
@@ -81,7 +84,7 @@ def get_parameters():
         _args.log_level = os.environ["LOG_LEVEL"]
 
     if "API_HOSTNAME" in os.environ:
-        _args.hostname = os.environ["API_HOSTNAME"]
+        _args.api_hostname = os.environ["API_HOSTNAME"]
 
     required_args = ["api_region", "v1_kms_region", "v2_kms_region", "api_hostname"]
     missing_args = []
@@ -98,6 +101,8 @@ def get_parameters():
 
     return _args
 
+def get_date_time_now():
+    return datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
 
 args = None
 logger = None
@@ -111,7 +116,6 @@ def handler(event, context):
 
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
-    datetimenow = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
 
     request_auth = AWSRequestsAuth(
         aws_access_key=default_credentials.access_key,
@@ -122,17 +126,16 @@ def handler(event, context):
         aws_service="execute-api",
     )
 
-    loaded_event = json.loads(event)
     try:
-        original_request = loaded_event["Body"]["originalRequest"]
-        original_response = loaded_event["Body"]["originalResponse"]
+        original_request = json.loads(event["Body"]["originalRequest"])
+        original_response = json.loads(event["Body"]["originalResponse"])
     except KeyError as e:
         logger.error("Attempted to extract event items but was unable.")
         logger.error(e)
         raise e
 
     actual_response = replay_original_request(
-        request_auth, original_request, datetimenow, args
+        request_auth, original_request, get_date_time_now(), args
     )
 
     decrypted_original_response = decrypt_response(
@@ -155,19 +158,19 @@ def replay_original_request(request_auth, original_request, date_time_now, args)
 
     headers = {
         "Content-Type": "application/json",
-        "X-Amz-Date": date_time_now,
+        "X-Amz-Date": get_date_time_now(),
     }
 
-    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.hostname}')
+    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}')
     request = requests.post(
-        f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
+        f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
         data=request_parameters,
         auth=request_auth,
         headers=headers,
     )
 
     logger.info(
-        f'Received response from AWS API", "api_hostname": "{args.hostname}", "response_code": "{request.status_code}'
+        f'Received response from AWS API", "api_hostname": "{args.api_hostname}", "response_code": "{request.status_code}'
     )
 
     return json.loads(request.text)
@@ -176,7 +179,7 @@ def replay_original_request(request_auth, original_request, date_time_now, args)
 def decrypt_response(response: dict, request: dict, region: str) -> dict:
     # Create a deep copy of the response to keep the function pure
     response = response.copy()
-    session = boto3.session.Session(profile_name="decrypt", region_name=region)
+    session = boto3.session.Session(region_name=region)
 
     client = session.client("kms")
 
@@ -186,7 +189,7 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob)
+        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob, KeyId=amount["keyId"])
         data_key = kms_response.get("Plaintext")
 
         nonce_size = 12
@@ -208,8 +211,11 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
             take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
 
             amount["takeHomePay"] = take_home_pay
-            del amount["ciperTextBlob"]
-            del amount["keyId"]
+
+            if amount["cipherTextBlob"]:
+                del amount["cipherTextBlob"]
+            if amount["keyId"]:
+                del amount["keyId"]
 
             period["amount"] = amount
 
@@ -223,11 +229,19 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
             logger.error(e)
             raise e
 
+        logger.info(f'Successfully decrypted assessment period"   '
+                    f'"transaction_id": {request.get("transaction_id")}, '
+                    f'"from_date": {request.get("from_date")}, '
+                    f'"to_date": {request.get("to_date")}')
     return response
 
 
 def compare_responses(original, actual, request):
     match = True
+    print("original")
+    print(original)
+    print("actual")
+    print(actual)
     if original["claimantFound"] != actual["claimantFound"]:
         match = False
         logger.info(
@@ -306,6 +320,9 @@ def compare_responses(original, actual, request):
 
 if __name__ == "__main__":
     try:
+        args = get_parameters()
+        logger = setup_logging("INFO")
+
         boto3.setup_default_session(
             profile_name=args.aws_profile, region_name=args.aws_region
         )
@@ -313,4 +330,4 @@ if __name__ == "__main__":
         json_content = json.loads(open("resources/event.json", "r").read())
         handler(json_content, None)
     except Exception as err:
-        logger.error(f'Exception occurred for invocation", "error_message": "{err.msg}')
+        logger.error(f'Exception occurred for invocation", "error_message": "{err}')
