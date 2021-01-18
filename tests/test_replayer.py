@@ -117,8 +117,6 @@ class TestReplayer(unittest.TestCase):
                   "claimantFound": true,
                   "assessmentPeriod": [
                     {
-                      "fromDate": "20280301",
-                      "toDate": "20280331",
                       "amount": {
                         "keyId": "arn:aws:kms:eu-west-1:475593055014:key/08db5e60-156c-4e41-b61f-60a3556efd7e",
                         "takeHomePay": "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w==",
