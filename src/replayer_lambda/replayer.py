@@ -83,7 +83,7 @@ def get_parameters():
     if "API_HOSTNAME" in os.environ:
         _args.hostname = os.environ["API_HOSTNAME"]
 
-    required_args = ["API_REGION", "V1_KMS_REGION", "V2_KMS_REGION", "API_HOSTNAME"]
+    required_args = ["api_region", "v1_kms_region", "v2_kms_region", "api_hostname"]
     missing_args = []
     for required_message_key in required_args:
         if required_message_key not in _args:
