@@ -137,9 +137,7 @@ def handler(event, context):
         logger.error(e)
         raise e
 
-    actual_response = replay_original_request(
-        request_auth, original_request, args
-    )
+    actual_response = replay_original_request(request_auth, original_request, args)
 
     decrypted_original_response = decrypt_response(
         original_response, original_request, args.v2_kms_region

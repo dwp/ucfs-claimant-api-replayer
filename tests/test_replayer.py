@@ -97,7 +97,9 @@ class TestReplayer(unittest.TestCase):
                         headers=headers,
                     )
 
-                    expected_takehome = "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
+                    expected_takehome = (
+                        "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
+                    )
 
                     self.assertEqual(
                         expected_takehome,
@@ -157,7 +159,9 @@ class TestReplayer(unittest.TestCase):
                         headers=headers,
                     )
 
-                    expected_takehome = "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
+                    expected_takehome = (
+                        "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
+                    )
 
                     self.assertEqual(
                         expected_takehome,
