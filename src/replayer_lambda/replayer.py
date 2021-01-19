@@ -113,6 +113,7 @@ def handler(event, context):
     args = get_parameters()
     global logger
     logger = setup_logging(args.log_level)
+    logger.info(f"Event: {event}")
 
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
