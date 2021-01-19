@@ -101,8 +101,10 @@ def get_parameters():
 
     return _args
 
+
 def get_date_time_now():
     return datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
 
 args = None
 logger = None
@@ -190,7 +192,9 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob, KeyId=amount["keyId"])
+        kms_response = client.decrypt(
+            CiphertextBlob=cipher_text_blob, KeyId=amount["keyId"]
+        )
         data_key = kms_response.get("Plaintext")
 
         nonce_size = 12
@@ -230,10 +234,12 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
             logger.error(e)
             raise e
 
-        logger.info(f'Successfully decrypted assessment period"   '
-                    f'"transaction_id": {request.get("transaction_id")}, '
-                    f'"from_date": {request.get("from_date")}, '
-                    f'"to_date": {request.get("to_date")}')
+        logger.info(
+            f'Successfully decrypted assessment period"   '
+            f'"transaction_id": {request.get("transaction_id")}, '
+            f'"from_date": {request.get("from_date")}, '
+            f'"to_date": {request.get("to_date")}'
+        )
     return response
 
 
