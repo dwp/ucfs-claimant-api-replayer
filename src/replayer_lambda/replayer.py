@@ -192,9 +192,7 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         take_home_pay = base64.urlsafe_b64decode(amount.get("takeHomePay"))
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
-        kms_response = client.decrypt(
-            CiphertextBlob=cipher_text_blob
-        )
+        kms_response = client.decrypt(CiphertextBlob=cipher_text_blob)
         data_key = kms_response.get("Plaintext")
 
         nonce_size = 12
