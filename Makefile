@@ -30,3 +30,13 @@ env-vars: ## Make env vars required by application
 
 unittest:
 	tox
+
+deployable:
+	rm -rf artifacts
+	mkdir artifacts
+	pip install -r requirements.txt -t artifacts
+	cp src/replayer_lambda/*.py artifacts/
+	cd artifacts && zip -r ../ucfs-claimant-api-replayer-development.zip ./ && cd -
+
+clean:
+	rm -rf artifacts ./src/ucfs_claimant_api_replayer.egg-info ./ucfs-claimant-api-replayer-development.zip

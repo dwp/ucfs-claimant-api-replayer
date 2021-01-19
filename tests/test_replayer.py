@@ -89,7 +89,7 @@ class TestReplayer(unittest.TestCase):
                 )
 
                 request_mock.post.assert_called_once_with(
-                    f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
+                    f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
                     data="nino=AA123456A&transactionId=42&fromDate=20200101&toDate=20210101",
                     auth=request_auth,
                     headers=headers,
@@ -147,7 +147,7 @@ class TestReplayer(unittest.TestCase):
                 )
 
                 request_mock.post.assert_called_once_with(
-                    f"https://{args.api_hostname}/ucfs-claimant/v2/getAwardDetails",
+                    f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
                     data="nino=AA123456A&transactionId=42",
                     auth=request_auth,
                     headers=headers,
