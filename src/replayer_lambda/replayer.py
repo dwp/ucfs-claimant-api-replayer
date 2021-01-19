@@ -138,7 +138,7 @@ def handler(event, context):
         raise e
 
     actual_response = replay_original_request(
-        request_auth, original_request, get_date_time_now(), args
+        request_auth, original_request, args
     )
 
     decrypted_original_response = decrypt_response(
@@ -156,7 +156,7 @@ def handler(event, context):
         logger.info('Final result", "status": "miss')
 
 
-def replay_original_request(request_auth, original_request, date_time_now, args):
+def replay_original_request(request_auth, original_request, args):
     request_parameters = "&".join([f"{k}={v}" for k, v in original_request.items()])
 
     headers = {
