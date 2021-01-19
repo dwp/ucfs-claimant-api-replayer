@@ -193,7 +193,7 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         cipher_text_blob = base64.urlsafe_b64decode(amount.get("cipherTextBlob"))
 
         kms_response = client.decrypt(
-            CiphertextBlob=cipher_text_blob, KeyId=amount["keyId"]
+            CiphertextBlob=cipher_text_blob
         )
         data_key = kms_response.get("Plaintext")
 
