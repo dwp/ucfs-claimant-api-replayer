@@ -5,6 +5,11 @@ from copy import deepcopy
 from unittest import mock
 from replayer_lambda.replayer import *
 
+replayer_requests_method = "replayer_lambda.replayer.requests"
+replayer_dates_method = "replayer_lambda.replayer.get_date_time_now"
+app_json_header = "application/json"
+expected_takehome_value = "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
+
 """Tests for the UC Export to Crown Controller Lambda."""
 
 original_data = {
@@ -50,8 +55,8 @@ request_parameters = {
 
 class TestReplayer(unittest.TestCase):
     def test_replay_original_request(self):
-        with mock.patch("replayer_lambda.replayer.requests") as request_mock:
-            with mock.patch("replayer_lambda.replayer.get_date_time_now") as mock_time:
+        with mock.patch(replayer_requests_method) as request_mock:
+            with mock.patch(replayer_dates_method) as mock_time:
                 with mock.patch("replayer_lambda.replayer.logger"):
                     data = """
                     {
@@ -82,7 +87,7 @@ class TestReplayer(unittest.TestCase):
                     args.api_hostname = "api.dev.gov.uk"
 
                     headers = {
-                        "Content-Type": "application/json",
+                        "Content-Type": app_json_header,
                         "X-Amz-Date": "20200113T130000",
                     }
 
@@ -97,19 +102,15 @@ class TestReplayer(unittest.TestCase):
                         headers=headers,
                     )
 
-                    expected_takehome = (
-                        "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
-                    )
-
                     self.assertEqual(
-                        expected_takehome,
+                        expected_takehome_value,
                         result["assessmentPeriod"][0]["amount"]["takeHomePay"],
                     )
                     self.assertTrue(result["claimantFound"])
 
     def test_replay_original_request_with_missing_dates(self):
-        with mock.patch("replayer_lambda.replayer.requests") as request_mock:
-            with mock.patch("replayer_lambda.replayer.get_date_time_now") as mock_time:
+        with mock.patch(replayer_requests_method) as request_mock:
+            with mock.patch(replayer_dates_method) as mock_time:
                 with mock.patch("replayer_lambda.replayer.logger"):
                     request_parameters_copy = deepcopy(request_parameters)
 
@@ -117,7 +118,7 @@ class TestReplayer(unittest.TestCase):
                     request_parameters_copy.pop("fromDate", None)
                     request_parameters_copy.pop("toDate", None)
 
-                    data = """
+                    data = f"""
                     {
                       "claimantFound": true,
                       "assessmentPeriod": [
@@ -144,7 +145,7 @@ class TestReplayer(unittest.TestCase):
                     args.api_hostname = "api.dev.gov.uk"
 
                     headers = {
-                        "Content-Type": "application/json",
+                        "Content-Type": app_json_header,
                         "X-Amz-Date": "20200113T130000",
                     }
 
@@ -159,12 +160,8 @@ class TestReplayer(unittest.TestCase):
                         headers=headers,
                     )
 
-                    expected_takehome = (
-                        "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
-                    )
-
                     self.assertEqual(
-                        expected_takehome,
+                        expected_takehome_value,
                         result["assessmentPeriod"][0]["amount"]["takeHomePay"],
                     )
                     self.assertTrue(result["claimantFound"])
@@ -173,8 +170,8 @@ class TestReplayer(unittest.TestCase):
                     self.assertNotIn("toDate", result["assessmentPeriod"][0].keys())
 
     def test_replay_original_request_with_empty_dates(self):
-        with mock.patch("replayer_lambda.replayer.requests") as request_mock:
-            with mock.patch("replayer_lambda.replayer.get_date_time_now") as mock_time:
+        with mock.patch(replayer_requests_method) as request_mock:
+            with mock.patch(replayer_dates_method) as mock_time:
                 with mock.patch("replayer_lambda.replayer.logger"):
                     request_parameters_copy = deepcopy(request_parameters)
 
@@ -182,7 +179,7 @@ class TestReplayer(unittest.TestCase):
                     request_parameters_copy["fromDate"] = None
                     request_parameters_copy["toDate"] = None
 
-                    data = """
+                    data = f"""
                     {
                       "claimantFound": true,
                       "assessmentPeriod": [
@@ -209,7 +206,7 @@ class TestReplayer(unittest.TestCase):
                     args.api_hostname = "api.dev.gov.uk"
 
                     headers = {
-                        "Content-Type": "application/json",
+                        "Content-Type": app_json_header,
                         "X-Amz-Date": "20200113T130000",
                     }
 
@@ -224,12 +221,8 @@ class TestReplayer(unittest.TestCase):
                         headers=headers,
                     )
 
-                    expected_takehome = (
-                        "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
-                    )
-
                     self.assertEqual(
-                        expected_takehome,
+                        expected_takehome_value,
                         result["assessmentPeriod"][0]["amount"]["takeHomePay"],
                     )
                     self.assertTrue(result["claimantFound"])
