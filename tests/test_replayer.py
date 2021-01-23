@@ -118,7 +118,7 @@ class TestReplayer(unittest.TestCase):
                     request_parameters_copy.pop("fromDate", None)
                     request_parameters_copy.pop("toDate", None)
 
-                    data = f"""
+                    data = """
                     {
                       "claimantFound": true,
                       "assessmentPeriod": [
@@ -179,7 +179,7 @@ class TestReplayer(unittest.TestCase):
                     request_parameters_copy["fromDate"] = None
                     request_parameters_copy["toDate"] = None
 
-                    data = f"""
+                    data = """
                     {
                       "claimantFound": true,
                       "assessmentPeriod": [
