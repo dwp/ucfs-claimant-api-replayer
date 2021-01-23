@@ -157,7 +157,7 @@ def handler(event, context):
 def replay_original_request(request_auth, original_request, args):
     non_empty_request_parameters = []
     for k, v in original_request.items():
-        if v is not None:
+        if v is not None and v != "":
             non_empty_request_parameters.append(f"{k}={v}")
 
     request_parameters = "&".join(non_empty_request_parameters)
