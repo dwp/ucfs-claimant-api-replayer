@@ -155,7 +155,12 @@ def handler(event, context):
 
 
 def replay_original_request(request_auth, original_request, args):
-    request_parameters = "&".join([f"{k}={v}" for k, v in original_request.items()])
+    non_empty_request_parameters = []
+    for k, v in original_request.items():
+        if v is not None:
+            non_empty_request_parameters.append(f"{k}={v}")
+
+    request_parameters = "&".join(non_empty_request_parameters)
 
     headers = {
         "Content-Type": "application/json",
