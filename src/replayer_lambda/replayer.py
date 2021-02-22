@@ -1,105 +1,13 @@
-import logging
 import boto3
-import argparse
 import os
-import sys
-import socket
 import json
 import datetime
 import requests
 import base64
+from config import *
+from query_rds import *
 from aws_requests_auth.aws_auth import AWSRequestsAuth
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
-
-def setup_logging(logger_level):
-    the_logger = logging.getLogger()
-    for old_handler in the_logger.handlers:
-        the_logger.removeHandler(old_handler)
-
-    new_handler = logging.StreamHandler(sys.stdout)
-
-    hostname = socket.gethostname()
-
-    json_format = (
-        '{ "timestamp": "%(asctime)s", "log_level": "%(levelname)s", "message": "%(message)s", '
-        f'"environment": "{args.environment}", "application": "{args.application}", '
-        f'"module": "%(module)s", "process": "%(process)s", '
-        f'"thread": "[%(thread)s]", "hostname": "{hostname}" }} '
-    )
-
-    new_handler.setFormatter(logging.Formatter(json_format))
-    the_logger.addHandler(new_handler)
-    new_level = logging.getLevelName(logger_level.upper())
-    the_logger.setLevel(new_level)
-
-    if the_logger.isEnabledFor(logging.DEBUG):
-        boto3.set_stream_logger()
-        the_logger.debug(f'Using boto3", "version": "{boto3.__version__}')
-
-    return the_logger
-
-
-def get_parameters():
-    parser = argparse.ArgumentParser(
-        description="An AWS lambda which receives requests and a response payload, "
-        "to replay against the v1 UCFS Claimant API in London to assert responses are equal."
-    )
-
-    # Parse command line inputs and set defaults
-    parser.add_argument("--aws-profile", default="default")
-    parser.add_argument("--environment", default="NOT_SET")
-    parser.add_argument("--application", default="NOT_SET")
-    parser.add_argument("--log-level", default="INFO")
-    parser.add_argument("--api-region", default="eu-west-1")
-    parser.add_argument("--v1-kms-region", default="eu-west-2")
-    parser.add_argument("--v2-kms-region", default="eu-west-1")
-    parser.add_argument("--api-hostname")
-
-    _args = parser.parse_args()
-
-    # Override arguments with environment variables where set
-    if "AWS_PROFILE" in os.environ:
-        _args.aws_profile = os.environ["AWS_PROFILE"]
-
-    if "AWS_REGION" in os.environ:
-        _args.aws_region = os.environ["AWS_REGION"]
-
-    if "API_REGION" in os.environ:
-        _args.api_region = os.environ["API_REGION"]
-
-    if "V1_KMS_REGION" in os.environ:
-        _args.v1_kms_region = os.environ["V1_KMS_REGION"]
-
-    if "V2_KMS_REGION" in os.environ:
-        _args.v2_kms_region = os.environ["V2_KMS_REGION"]
-
-    if "ENVIRONMENT" in os.environ:
-        _args.environment = os.environ["ENVIRONMENT"]
-
-    if "APPLICATION" in os.environ:
-        _args.application = os.environ["APPLICATION"]
-
-    if "LOG_LEVEL" in os.environ:
-        _args.log_level = os.environ["LOG_LEVEL"]
-
-    if "API_HOSTNAME" in os.environ:
-        _args.api_hostname = os.environ["API_HOSTNAME"]
-
-    required_args = ["api_region", "v1_kms_region", "v2_kms_region", "api_hostname"]
-    missing_args = []
-    for required_message_key in required_args:
-        if required_message_key not in _args:
-            missing_args.append(required_message_key)
-    if missing_args:
-        raise argparse.ArgumentError(
-            None,
-            "ArgumentError: The following required arguments are missing: {}".format(
-                ", ".join(missing_args)
-            ),
-        )
-
-    return _args
 
 
 def get_date_time_now():
@@ -108,6 +16,7 @@ def get_date_time_now():
 
 args = None
 logger = None
+ddb_client = boto3.resource('dynamodb')
 
 
 def handler(event, context):
@@ -115,6 +24,7 @@ def handler(event, context):
     args = get_parameters()
     global logger
     logger = setup_logging(args.log_level)
+
     logger.info(f"Event: {event}")
 
     session = boto3.session.Session()
@@ -147,7 +57,7 @@ def handler(event, context):
     )
 
     if compare_responses(
-        decrypted_original_response, decrypted_actual_response, original_request
+            decrypted_original_response, decrypted_actual_response, original_request
     ):
         logger.info('Final result", "status": "match')
     else:
@@ -246,10 +156,9 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
 
 def compare_responses(original, actual, request):
     match = True
-    print("original")
-    print(original)
-    print("actual")
-    print(actual)
+    logger.info(f'Original response to compare", "original_response": "{original}')
+    logger.info(f'Actual response to compare", "actual_response": "{actual}')
+
     if original["claimantFound"] != actual["claimantFound"]:
         match = False
         logger.info(
@@ -265,6 +174,7 @@ def compare_responses(original, actual, request):
             logger.info(
                 'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
             )
+            unmatched_responses_request_additional_info(original["nino"], original["transaction_id"])
 
     else:
         if actual.get("suspendedDate"):
@@ -272,6 +182,7 @@ def compare_responses(original, actual, request):
             logger.info(
                 'Suspended date not expected but found in replayed response", "status": "miss'
             )
+            unmatched_responses_request_additional_info(original["nino"], original["transaction_id"])
         else:
             logger.info(
                 'Suspended date is not expected and not present in either original or replayed response", '
@@ -313,6 +224,7 @@ def compare_responses(original, actual, request):
             f'"AP_from_date": {record.get("fromDate")},'
             f'"AP_to_date": {record.get("toDate")}'
         )
+        unmatched_responses_request_additional_info(original["nino"], original["transaction_id"])
 
     for record in all_assessment_period["actual_list"]:
         match = False
@@ -322,8 +234,52 @@ def compare_responses(original, actual, request):
             f'"AP_from_date": {record.get("fromDate")},'
             f'"AP_to_date": {record.get("toDate")}'
         )
+        unmatched_responses_request_additional_info(original["nino"], original["transaction_id"])
 
     return match
+
+
+def unmatched_responses_request_additional_info(nino, transaction_id):
+    logger.info(
+        f'Requesting additional data for unmatched record", "nino": "{nino}", "transaction_id": "{transaction_id}')
+
+    ireland_additional_data = get_additional_record_data(
+        nino,
+        transaction_id,
+        args.ireland_parameter_name,
+        "eu-west-1")
+
+    london_additional_data = get_additional_record_data(
+        nino,
+        transaction_id,
+        args.london_parameter_name,
+        "eu-west-2")
+
+    dynamodb_record_mismatch_record(ddb_client, ireland_additional_data, london_additional_data)
+
+
+def dynamodb_record_mismatch_record(dynamodb, ireland_additional_data, london_additional_data):
+    table = dynamodb.Table(args.ddb_record_mismatch_table)
+
+    logger.info(
+        f'Recording mismatch record into DynamoDB", "ddb_record_mismatch_table": "{args.ddb_record_mismatch_table}", '
+        f'"nino": {ireland_additional_data["nino"]}')
+
+    response = table.put_item(
+        Item={
+            'nino': ireland_additional_data["nino"],
+            'transaction_id': ireland_additional_data["transaction_id"],
+            'decrypted_take_home_pay': ireland_additional_data["take_home_pay"],
+            "CONTRACT_ID_IRE": ireland_additional_data["ireland_additional_data"],
+            "CONTRACT_ID_LDN": ireland_additional_data["ireland_additional_data"],
+            "AP_FROM_IRE": ireland_additional_data["assessment_period_from_date"],
+            "AP_TO_IRE": ireland_additional_data["assessment_period_to_date"],
+            "AP_FROM_LDN": london_additional_data["assessment_period_from_date"],
+            "AP_TO_LDN": london_additional_data["assessment_period_to_date"],
+            "SUSPENDED_DATE_IRE": ireland_additional_data["suspended_date"],
+            "SUSPENDED_DATE_LDN": london_additional_data["suspended_date"]
+        }
+    )
 
 
 if __name__ == "__main__":
