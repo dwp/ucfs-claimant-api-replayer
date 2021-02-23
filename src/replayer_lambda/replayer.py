@@ -168,12 +168,21 @@ def replay_original_request(request_auth, original_request, args):
     }
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}')
-    request = requests.post(
-        f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
-        data=request_parameters,
-        auth=request_auth,
-        headers=headers,
-    )
+
+    try:
+        request = requests.post(
+            f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
+            data=request_parameters,
+            auth=request_auth,
+            headers=headers,
+        )
+    except Exception as e:
+        logger.error(
+            f'Failed to communicate with AWS API", "api_hostname": "args.api_hostname", '
+            f'"api_request_address": "https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",'
+            f'"exception": "{e}'
+        )
+        raise e
 
     logger.info(
         f'Received response from AWS API", "api_hostname": "{args.api_hostname}", "response_code": "{request.status_code}'
