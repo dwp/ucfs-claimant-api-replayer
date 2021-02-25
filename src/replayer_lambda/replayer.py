@@ -78,12 +78,18 @@ def replay_original_request(request_auth, original_request, args):
     }
 
     logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}')
-    request = requests.post(
-        f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
-        data=request_parameters,
-        auth=request_auth,
-        headers=headers,
-    )
+    try:
+        request = requests.post(
+            f"https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",
+            data=request_parameters,
+            auth=request_auth,
+            headers=headers,
+        )
+    except Exception as e:
+        logger.error(f'Failed to communicate with AWS API", "api_hostname": "args.api_hostname", '
+                     f'"api_request_address": "https://{args.api_hostname}/ucfs-claimant/v1/getAwardDetails",'
+                     f'"exception": "{e}')
+        raise e
 
     logger.info(
         f'Received response from AWS API", "api_hostname": "{args.api_hostname}", "response_code": "{request.status_code}'
@@ -243,17 +249,31 @@ def unmatched_responses_request_additional_info(nino, transaction_id):
     logger.info(
         f'Requesting additional data for unmatched record", "nino": "{nino}", "transaction_id": "{transaction_id}')
 
+    ireland_sql_password = get_parameter_store_value(args.ireland_master_pw_parameter, "eu-west-1")
+    ireland_connection = get_connection(
+        args.ireland_rds_hostname,
+        args.ireland_rds_username,
+        ireland_sql_password,
+        args.ireland_database_name
+    )
     ireland_additional_data = get_additional_record_data(
         nino,
         transaction_id,
-        args.ireland_parameter_name,
-        "eu-west-1")
+        ireland_connection
+    )
 
+    london_sql_password = get_parameter_store_value(args.ireland_master_pw_parameter, "eu-west-2")
+    london_connection = get_connection(
+        args.london_rds_hostname,
+        args.london_rds_username,
+        london_sql_password,
+        args.london_database_name
+    )
     london_additional_data = get_additional_record_data(
         nino,
         transaction_id,
-        args.london_parameter_name,
-        "eu-west-2")
+        london_connection
+    )
 
     dynamodb_record_mismatch_record(ddb_client, ireland_additional_data, london_additional_data)
 
@@ -280,6 +300,8 @@ def dynamodb_record_mismatch_record(dynamodb, ireland_additional_data, london_ad
             "SUSPENDED_DATE_LDN": london_additional_data["suspended_date"]
         }
     )
+
+    logger.info('Recorded mismatch record into DynamoDB')
 
 
 if __name__ == "__main__":

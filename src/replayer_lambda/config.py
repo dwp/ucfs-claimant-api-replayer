@@ -85,11 +85,11 @@ def get_parameters():
     if "DDB_RECORD_MISMATCH_TABLE" in os.environ:
         _args.ddb_record_mismatch_table = os.environ["DDB_RECORD_MISMATCH_TABLE"]
 
-    if "LONDON_PARAMETER_NAME" in os.environ:
-        _args.london_parameter_name = os.environ["LONDON_PARAMETER_NAME"]
+    if "LONDON_MASTER_PW_PARAMETER_NAME" in os.environ:
+        _args.london_master_pw_parameter_name = os.environ["LONDON_MASTER_PW_PARAMETER_NAME"]
 
-    if "IRELAND_PARAMETER_NAME" in os.environ:
-        _args.ireland_parameter_name = os.environ["IRELAND_PARAMETER_NAME"]
+    if "IRELAND_MASTER_PW_PARAMETER_NAME" in os.environ:
+        _args.ireland_master_pw_parameter_name = os.environ["IRELAND_MASTER_PW_PARAMETER_NAME"]
 
     if "LONDON_RDS_HOSTNAME" in os.environ:
             _args.london_rds_hostname = os.environ["LONDON_RDS_HOSTNAME"]
@@ -97,7 +97,29 @@ def get_parameters():
     if "IRELAND_RDS_HOSTNAME" in os.environ:
         _args.ireland_rds_hostname = os.environ["IRELAND_RDS_HOSTNAME"]
 
-    required_args = ["api_region", "v1_kms_region", "v2_kms_region", "api_hostname", "ddb_record_mismatch_table", "london_parameter_name", "ireland_parameter_name"]
+    if "LONDON_RDS_USERNAME" in os.environ:
+        _args.london_rds_username = os.environ["LONDON_RDS_USERNAME"]
+
+    if "IRELAND_RDS_USERNAME" in os.environ:
+        _args.ireland_rds_username = os.environ["IRELAND_RDS_USERNAME"]
+
+    if "LONDON_DATABASE_NAME" in os.environ:
+        _args.london_database_name = os.environ["LONDON_DATABASE_NAME"]
+
+    if "IRELAND_DATABASE_NAME" in os.environ:
+        _args.ireland_database_name = os.environ["IRELAND_DATABASE_NAME"]
+
+    required_args = ["api_region", "v1_kms_region",
+                     "v2_kms_region", "api_hostname",
+                     "ddb_record_mismatch_table",
+                     "london_master_pw_parameter_name",
+                     "ireland_master_pw_parameter_name",
+                     "london_rds_username",
+                     "ireland_rds_username",
+                     "london_database_name",
+                     "ireland_database_name"
+                     ]
+
     missing_args = []
     for required_message_key in required_args:
         if required_message_key not in _args:
