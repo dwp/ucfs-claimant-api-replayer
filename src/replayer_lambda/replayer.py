@@ -135,7 +135,7 @@ def handler(event, context):
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
 
-    lambda_client = boto3.client("lambda", region=args.mismatch_lambda_region)
+    lambda_client = boto3.client("lambda", region_name=args.mismatch_lambda_region)
 
     request_auth = AWSRequestsAuth(
         aws_access_key=default_credentials.access_key,
