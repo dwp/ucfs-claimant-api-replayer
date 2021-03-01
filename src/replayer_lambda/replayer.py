@@ -269,8 +269,10 @@ def compare_responses(original, actual, request, lambda_client):
         match = False
         logger.info(
             f"Claimant found doesn't match, "
-            f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}'
+            f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}. '
+            f'Forwarding to mismatch handler", "status": "miss'
         )
+        forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"), "", lambda_client, args)
 
     if original.get("suspendedDate"):
         if original.get("suspendedDate") == actual.get("suspendedDate"):
@@ -335,19 +337,20 @@ def compare_responses(original, actual, request, lambda_client):
             f'"AP_to_date": {record.get("toDate")}'
         )
         forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"),
-                                    record.get("takeHomePay"),
+                                    record.get("amount").get("takeHomePay"),
                                     lambda_client, args)
 
     for record in all_assessment_period["actual_list"]:
         match = False
         logger.info(
-            f'No match for replayed assessment period in original response assessment period", "status": "miss", '
+            f'No match for replayed assessment period in original response assessment period. '
+            f'Forwarding to mismatch handler", "status": "miss", '
             f'"transaction_id": {request["transactionId"]}, '
             f'"AP_from_date": {record.get("fromDate")},'
             f'"AP_to_date": {record.get("toDate")}'
         )
         forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"),
-                                    record.get("takeHomePay"),
+                                    record.get("amount").get("takeHomePay"),
                                     lambda_client, args)
 
     return match
