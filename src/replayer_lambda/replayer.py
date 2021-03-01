@@ -396,7 +396,6 @@ def forward_to_mismatch_handler(nino, transaction_id, take_home_pay, lambda_clie
                 f'"mismatch_lambda_name": "{args.mismatch_lambda_name}",'
                 f' "mismatch_lambda_region": "{args.mismatch_lambda_region}')
 
-
     lambda_payload = json.dumps(
         {"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay}
     )
