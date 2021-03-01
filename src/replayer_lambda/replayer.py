@@ -92,7 +92,7 @@ def get_parameters():
         _args.mismatch_lambda_name = os.environ["MISMATCH_LAMBDA_NAME"]
 
     if "MISMATCH_LAMBDA_REGION" in os.environ:
-        _args.mismatch_lambda_name = os.environ["MISMATCH_LAMBDA_REGION"]
+        _args.mismatch_lambda_region = os.environ["MISMATCH_LAMBDA_REGION"]
 
     required_args = [
         "api_region",
