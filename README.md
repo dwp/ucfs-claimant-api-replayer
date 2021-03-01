@@ -20,6 +20,8 @@ After cloning this repo, please run:
 |APPLICATION| ucfs-claimant-api-replayer |The name of the application |
 |LOG_LEVEL| INFO or DEBUG |The logging level of the Lambda |
 |API_HOSTNAME|api.{environment_short_name}.dataworks.dwp.gov.uk|The FQDN of AWS Gateway API |
+|MISMATCH_LAMBDA_NAME|ucfs-claimant-api-replayer-mismatch-handler|The full name of the mismatch handler lambda |
+|MISMATCH_LAMBDA_REGION|eu-west-1|The region where the mismatch handler lambda is deployed |
 
 ## Testing
 

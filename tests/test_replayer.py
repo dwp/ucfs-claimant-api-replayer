@@ -10,6 +10,8 @@ replayer_dates_method = "replayer_lambda.replayer.get_date_time_now"
 app_json_header = "application/json"
 expected_takehome_value = "rkLj7p2vTGD-XTLkm4P-ulLDM6Wtu1cjKDAcDr8dxjKu0w=="
 
+lambda_client = mock.MagicMock()
+
 """Tests for the UC Export to Crown Controller Lambda."""
 
 original_data = {
@@ -235,7 +237,7 @@ class TestReplayer(unittest.TestCase):
         actual_data = deepcopy(original_data)
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data, actual_data, request_parameters)
+            result = compare_responses(original_data, actual_data, request_parameters, lambda_client)
 
             mock_logger.info.assert_any_call(
                 'Suspended date is not expected and not present in either original or replayed response", '
@@ -265,7 +267,7 @@ class TestReplayer(unittest.TestCase):
         actual_data["assessmentPeriod"][-1]["amount"]["takeHomePay"] = "54.66"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data, actual_data, request_parameters)
+            result = compare_responses(original_data, actual_data, request_parameters, lambda_client)
 
             mock_logger.info.assert_any_call(
                 'Suspended date is not expected and not present in either original or replayed response", '
@@ -289,7 +291,7 @@ class TestReplayer(unittest.TestCase):
 
             record = original_data.get("assessmentPeriod")[-1]
             mock_logger.info.assert_any_call(
-                f'No match for replayed assessment period in original response assessment period", "status": "miss", '
+                f'No match for replayed assessment period in original response assessment period. Forwarding to mismatch handler", "status": "miss", '
                 f'"transaction_id": {request_parameters["transactionId"]}, '
                 f'"AP_from_date": {record["fromDate"]},'
                 f'"AP_to_date": {record["toDate"]}'
@@ -297,7 +299,7 @@ class TestReplayer(unittest.TestCase):
 
             record = actual_data.get("assessmentPeriod")[-1]
             mock_logger.info.assert_any_call(
-                f'No match for replayed assessment period in original response assessment period", "status": "miss", '
+                f'No match for replayed assessment period in original response assessment period. Forwarding to mismatch handler", "status": "miss", '
                 f'"transaction_id": {request_parameters["transactionId"]}, '
                 f'"AP_from_date": {record["fromDate"]},'
                 f'"AP_to_date": {record["toDate"]}'
@@ -315,7 +317,7 @@ class TestReplayer(unittest.TestCase):
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
             result = compare_responses(
-                original_data_copy, actual_data, request_parameters
+                original_data_copy, actual_data, request_parameters, lambda_client
             )
 
             mock_logger.info.assert_any_call(
@@ -347,20 +349,21 @@ class TestReplayer(unittest.TestCase):
         original_data_copy["suspendedDate"] = "1234"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(
-                original_data_copy, actual_data, request_parameters
-            )
+            with mock.patch("replayer_lambda.replayer.forward_to_mismatch_handler") as mock_forward_func:
+                result = compare_responses(
+                    original_data_copy, actual_data, request_parameters, lambda_client
+                )
+
+                mock_logger.info.assert_any_call(
+                    'Suspended date expected but does not match or was not found in replayed response. Forwarding to mismatch handler", "status": "miss'
+                )
 
             mock_logger.info.assert_any_call(
-                'Suspended date expected but does not match or was not found in replayed response", "status": "miss'
-            )
-
-            mock_logger.info.assert_any_call(
-                f'Comparing responses", '
-                f'"transaction_id": {request_parameters.get("transactionId")}, '
-                f'"from_date": {request_parameters.get("fromDate")}, '
-                f'"to_date": {request_parameters.get("toDate")}'
-            )
+                    f'Comparing responses", '
+                    f'"transaction_id": {request_parameters.get("transactionId")}, '
+                    f'"from_date": {request_parameters.get("fromDate")}, '
+                    f'"to_date": {request_parameters.get("toDate")}'
+                )
 
             for record in original_data.get("assessmentPeriod", []):
                 mock_logger.info.assert_any_call(
@@ -382,7 +385,7 @@ class TestReplayer(unittest.TestCase):
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
             result = compare_responses(
-                original_data_copy, actual_data, request_parameters
+                original_data_copy, actual_data, request_parameters, lambda_client
             )
 
             mock_logger.info.assert_any_call(
@@ -413,7 +416,7 @@ class TestReplayer(unittest.TestCase):
         actual_data["claimantFound"] = False
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
-            result = compare_responses(original_data, actual_data, request_parameters)
+            result = compare_responses(original_data, actual_data, request_parameters, lambda_client)
 
             mock_logger.info.assert_any_call(
                 f"Claimant found doesn't match, "
@@ -442,3 +445,58 @@ class TestReplayer(unittest.TestCase):
                 )
 
             self.assertFalse(result)
+
+    def test_forward_mismatch_handler_with_mismatch_data(self):
+        args = mock.MagicMock()
+
+        args.mismatch_lambda_name = "mismatch_handler"
+        args.mismatch_lambda_region = "eu-west-1"
+
+        nino = "AA123456B"
+        transaction_id = "23"
+        take_home_pay = "123.45"
+
+        lambda_client = mock.MagicMock()
+        lambda_client.invoke = mock.MagicMock()
+        lambda_client.invoke.return_value = "Test return"
+
+        lambda_payload = json.dumps({"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay})
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            forward_to_mismatch_handler(nino, transaction_id, take_home_pay, lambda_client, args)
+
+            mock_logger.info.assert_any_call(
+                f'Invoked lambda successfully", "response": "Test return"'
+            )
+
+            lambda_client.invoke.assert_called_with(
+                FunctionName=args.mismatch_lambda_name,
+                InvocationType="Event",
+                Payload=lambda_payload
+            )
+
+    def test_forward_mismatch_handler_catches_lambda_invocation_exceptions(self):
+        args = mock.MagicMock()
+
+        args.mismatch_lambda_name = "mismatch_handler"
+        args.mismatch_lambda_region = "eu-west-1"
+
+        nino = "AA123456C"
+        transaction_id = "27"
+        take_home_pay = "124.45"
+
+        lambda_client_mock = mock.MagicMock()
+        lambda_client_mock.invoke = mock.MagicMock()
+        lambda_client_mock.invoke.side_effect = Exception("Test exception")
+
+        lambda_payload = json.dumps({"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay})
+
+        with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
+            with self.assertRaises(Exception):
+                forward_to_mismatch_handler(nino, transaction_id, take_home_pay, lambda_client, args)
+
+                lambda_client_mock.invoke.assert_called_with(args.mismatch_lambda_name, "Event", lambda_payload)
+
+                mock_logger.info.assert_any_call(
+                        f'Failed to invoke lambda", "exception": "Test exception'
+                    )
