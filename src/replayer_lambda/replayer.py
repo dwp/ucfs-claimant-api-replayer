@@ -388,13 +388,17 @@ def compare_responses(original, actual, request, lambda_client):
     return match
 
 
-def forward_to_mismatch_handler(nino, transaction_id, take_home_pay, lambda_client, args):
-    logger.info(f'Invoking mismatch handler lambda", '
-                f'"nino": "{nino}", '
-                f'"transaction_id", "{transaction_id}",'
-                f'"take_home_pay": "{take_home_pay}",'
-                f'"mismatch_lambda_name": "{args.mismatch_lambda_name}",'
-                f' "mismatch_lambda_region": "{args.mismatch_lambda_region}')
+def forward_to_mismatch_handler(
+    nino, transaction_id, take_home_pay, lambda_client, args
+):
+    logger.info(
+        f'Invoking mismatch handler lambda", '
+        f'"nino": "{nino}", '
+        f'"transaction_id", "{transaction_id}",'
+        f'"take_home_pay": "{take_home_pay}",'
+        f'"mismatch_lambda_name": "{args.mismatch_lambda_name}",'
+        f' "mismatch_lambda_region": "{args.mismatch_lambda_region}'
+    )
 
     lambda_payload = json.dumps(
         {"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay}
