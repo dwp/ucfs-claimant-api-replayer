@@ -92,9 +92,16 @@ def get_parameters():
         _args.mismatch_lambda_name = os.environ["MISMATCH_LAMBDA_NAME"]
 
     if "MISMATCH_LAMBDA_REGION" in os.environ:
-        _args.mismatch_lambda_name = os.environ["MISMATCH_LAMBDA_REGION"]
+        _args.mismatch_lambda_region = os.environ["MISMATCH_LAMBDA_REGION"]
 
-    required_args = ["api_region", "v1_kms_region", "v2_kms_region", "api_hostname", "mismatch_lambda_name", "mismatch_lambda_region"]
+    required_args = [
+        "api_region",
+        "v1_kms_region",
+        "v2_kms_region",
+        "api_hostname",
+        "mismatch_lambda_name",
+        "mismatch_lambda_region",
+    ]
     missing_args = []
     for required_message_key in required_args:
         if required_message_key not in _args:
@@ -128,7 +135,7 @@ def handler(event, context):
     session = boto3.session.Session()
     default_credentials = session.get_credentials().get_frozen_credentials()
 
-    lambda_client = boto3.client('lambda', region=args.mismatch_lambda_region)
+    lambda_client = boto3.client("lambda", region=args.mismatch_lambda_region)
 
     request_auth = AWSRequestsAuth(
         aws_access_key=default_credentials.access_key,
@@ -157,7 +164,10 @@ def handler(event, context):
     )
 
     if compare_responses(
-        decrypted_original_response, decrypted_actual_response, original_request, lambda_client
+        decrypted_original_response,
+        decrypted_actual_response,
+        original_request,
+        lambda_client,
     ):
         logger.info('Final result", "status": "match')
     else:
@@ -272,7 +282,9 @@ def compare_responses(original, actual, request, lambda_client):
             f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}. '
             f'Forwarding to mismatch handler", "status": "miss'
         )
-        forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"), "", lambda_client, args)
+        forward_to_mismatch_handler(
+            request.get("nino"), request.get("transactionId"), "", lambda_client, args
+        )
 
     if original.get("suspendedDate"):
         if original.get("suspendedDate") == actual.get("suspendedDate"):
@@ -280,19 +292,31 @@ def compare_responses(original, actual, request, lambda_client):
         else:
             match = False
             logger.info(
-                'Suspended date expected but does not match or was not found in replayed response. '
+                "Suspended date expected but does not match or was not found in replayed response. "
                 'Forwarding to mismatch handler", "status": "miss'
             )
-            forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"), "", lambda_client, args)
+            forward_to_mismatch_handler(
+                request.get("nino"),
+                request.get("transactionId"),
+                "",
+                lambda_client,
+                args,
+            )
 
     else:
         if actual.get("suspendedDate"):
             match = False
             logger.info(
-                'Suspended date not expected but found in replayed response. '
+                "Suspended date not expected but found in replayed response. "
                 'Forwarding to mismatch handler", "status": "miss'
             )
-            forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"), "", lambda_client, args)
+            forward_to_mismatch_handler(
+                request.get("nino"),
+                request.get("transactionId"),
+                "",
+                lambda_client,
+                args,
+            )
 
         else:
             logger.info(
@@ -330,28 +354,36 @@ def compare_responses(original, actual, request, lambda_client):
     for record in all_assessment_period["expected_list"]:
         match = False
         logger.info(
-            f'No match for original response assessment period in replayed assessment period. '
+            f"No match for original response assessment period in replayed assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
             f'"transaction_id": {request["transactionId"]}, '
             f'"AP_from_date": {record.get("fromDate")},'
             f'"AP_to_date": {record.get("toDate")}'
         )
-        forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"),
-                                    record.get("amount").get("takeHomePay"),
-                                    lambda_client, args)
+        forward_to_mismatch_handler(
+            request.get("nino"),
+            request.get("transactionId"),
+            record.get("amount").get("takeHomePay"),
+            lambda_client,
+            args,
+        )
 
     for record in all_assessment_period["actual_list"]:
         match = False
         logger.info(
-            f'No match for replayed assessment period in original response assessment period. '
+            f"No match for replayed assessment period in original response assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
             f'"transaction_id": {request["transactionId"]}, '
             f'"AP_from_date": {record.get("fromDate")},'
             f'"AP_to_date": {record.get("toDate")}'
         )
-        forward_to_mismatch_handler(request.get("nino"), request.get("transactionId"),
-                                    record.get("amount").get("takeHomePay"),
-                                    lambda_client, args)
+        forward_to_mismatch_handler(
+            request.get("nino"),
+            request.get("transactionId"),
+            record.get("amount").get("takeHomePay"),
+            lambda_client,
+            args,
+        )
 
     return match
 
@@ -364,12 +396,15 @@ def forward_to_mismatch_handler(nino, transaction_id, take_home_pay, lambda_clie
                 f'"mismatch_lambda_name": "{args.mismatch_lambda_name}",'
                 f' "mismatch_lambda_region": "{args.mismatch_lambda_region}')
 
-    lambda_payload = json.dumps({"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay})
+
+    lambda_payload = json.dumps(
+        {"nino": nino, "transaction_id": transaction_id, "take_home_pay": take_home_pay}
+    )
 
     try:
         response = lambda_client.invoke(
             FunctionName=args.mismatch_lambda_name,
-            InvocationType='Event',
+            InvocationType="Event",
             Payload=lambda_payload,
         )
 
