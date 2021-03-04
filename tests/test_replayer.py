@@ -564,7 +564,6 @@ class TestReplayer(unittest.TestCase):
 
                     self.assertFalse(result)
 
-
     def test_forward_mismatch_handler_with_mismatch_data(self):
         args = mock.MagicMock()
 

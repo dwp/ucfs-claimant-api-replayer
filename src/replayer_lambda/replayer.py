@@ -169,19 +169,21 @@ def handler(event, context):
         original_request,
         lambda_client,
     ):
-        logger.info(f'Final result", "status": "match", '
-                    f'"nino": "{original_request.get("nino")}", '
-                    f'"transaction_id": "{original_request.get("transaction_id")}", '
-                    f'"from_date": "{original_request.get("from_date")}", '
-                    f'"to_date": "{original_request.get("to_date")}'
-                    )
+        logger.info(
+            f'Final result", "status": "match", '
+            f'"nino": "{original_request.get("nino")}", '
+            f'"transaction_id": "{original_request.get("transaction_id")}", '
+            f'"from_date": "{original_request.get("from_date")}", '
+            f'"to_date": "{original_request.get("to_date")}'
+        )
     else:
-        logger.info(f'Final result", "status": "miss", '
-                    f'"nino": "{original_request.get("nino")}", '
-                    f'"transaction_id": "{original_request.get("transaction_id")}", '
-                    f'"from_date": "{original_request.get("from_date")}", '
-                    f'"to_date": "{original_request.get("to_date")}'
-                    )
+        logger.info(
+            f'Final result", "status": "miss", '
+            f'"nino": "{original_request.get("nino")}", '
+            f'"transaction_id": "{original_request.get("transaction_id")}", '
+            f'"from_date": "{original_request.get("from_date")}", '
+            f'"to_date": "{original_request.get("to_date")}'
+        )
 
 
 def replay_original_request(request_auth, original_request, args):
@@ -197,8 +199,10 @@ def replay_original_request(request_auth, original_request, args):
         "X-Amz-Date": get_date_time_now(),
     }
 
-    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}", '
-                f'"original_request": "{original_request}')
+    logger.info(
+        f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}", '
+        f'"original_request": "{original_request}'
+    )
 
     try:
         request = requests.post(
@@ -307,12 +311,13 @@ def compare_responses(original, actual, request, lambda_client):
 
     if original.get("suspendedDate"):
         if original.get("suspendedDate") == actual.get("suspendedDate"):
-            logger.info('Suspended date is a match", "status": "match", '
-                        f'"nino": "{request.get("nino")}", '
-                        f'"transaction_id": "{request.get("transactionId")}", '
-                        f'"from_date": "{request.get("fromDate")}", '
-                        f'"to_date": "{request.get("toDate")}'
-                        )
+            logger.info(
+                'Suspended date is a match", "status": "match", '
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
+            )
         else:
             match = False
             logger.info(
