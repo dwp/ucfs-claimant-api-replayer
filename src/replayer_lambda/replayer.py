@@ -169,9 +169,19 @@ def handler(event, context):
         original_request,
         lambda_client,
     ):
-        logger.info('Final result", "status": "match')
+        logger.info(f'Final result", "status": "match", '
+                    f'"nino": "{original_request.get("nino")}", '
+                    f'"transaction_id": "{original_request.get("transaction_id")}", '
+                    f'"from_date": "{original_request.get("from_date")}", '
+                    f'"to_date": "{original_request.get("to_date")}'
+                    )
     else:
-        logger.info('Final result", "status": "miss')
+        logger.info(f'Final result", "status": "miss", '
+                    f'"nino": "{original_request.get("nino")}", '
+                    f'"transaction_id": "{original_request.get("transaction_id")}", '
+                    f'"from_date": "{original_request.get("from_date")}", '
+                    f'"to_date": "{original_request.get("to_date")}'
+                    )
 
 
 def replay_original_request(request_auth, original_request, args):
@@ -187,7 +197,8 @@ def replay_original_request(request_auth, original_request, args):
         "X-Amz-Date": get_date_time_now(),
     }
 
-    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}')
+    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}", '
+                f'"original_request": "{original_request}')
 
     try:
         request = requests.post(
@@ -239,9 +250,10 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         try:
             logger.info(
                 f'Beginning to decrypt data", '
-                f'"transaction_id": {request.get("transaction_id")}, '
-                f'"from_date": {request.get("from_date")}, '
-                f'"to_date": {request.get("to_date")}'
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
             take_home_pay = aesgcm.decrypt(nonce, take_home_pay, None).decode("utf-8")
 
@@ -257,30 +269,37 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
         except Exception as e:
             logger.error(
                 f'Failed to decrypt data", '
-                f'"transaction_id": {request.get("transaction_id")}, '
-                f'"from_date": {request.get("from_date")}, '
-                f'"to_date": {request.get("to_date")}'
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
             logger.error(e)
             raise e
 
         logger.info(
-            f'Successfully decrypted assessment period"   '
-            f'"transaction_id": {request.get("transaction_id")}, '
-            f'"from_date": {request.get("from_date")}, '
-            f'"to_date": {request.get("to_date")}'
+            f'Successfully decrypted assessment period", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
         )
     return response
 
 
 def compare_responses(original, actual, request, lambda_client):
     match = True
+
     if original["claimantFound"] != actual["claimantFound"]:
         match = False
         logger.info(
-            f"Claimant found doesn't match, "
-            f'expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}. '
-            f'Forwarding to mismatch handler", "status": "miss'
+            f'Claimant found does not match, ", '
+            f'"expected {original["claimantFound"]} from replayed response but got {actual["claimantFound"]}.", '
+            f'"Forwarding to mismatch handler", "status": "miss", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
         )
         forward_to_mismatch_handler(
             request.get("nino"), request.get("transactionId"), "", lambda_client, args
@@ -288,12 +307,21 @@ def compare_responses(original, actual, request, lambda_client):
 
     if original.get("suspendedDate"):
         if original.get("suspendedDate") == actual.get("suspendedDate"):
-            logger.info('Suspended date is a match", "status": "match')
+            logger.info('Suspended date is a match", "status": "match", '
+                        f'"nino": "{request.get("nino")}", '
+                        f'"transaction_id": "{request.get("transactionId")}", '
+                        f'"from_date": "{request.get("fromDate")}", '
+                        f'"to_date": "{request.get("toDate")}'
+                        )
         else:
             match = False
             logger.info(
-                "Suspended date expected but does not match or was not found in replayed response. "
-                'Forwarding to mismatch handler", "status": "miss'
+                'Suspended date expected but does not match or was not found in replayed response.", '
+                '"Forwarding to mismatch handler", "status": "miss", '
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
             forward_to_mismatch_handler(
                 request.get("nino"),
@@ -307,8 +335,12 @@ def compare_responses(original, actual, request, lambda_client):
         if actual.get("suspendedDate"):
             match = False
             logger.info(
-                "Suspended date not expected but found in replayed response. "
-                'Forwarding to mismatch handler", "status": "miss'
+                'Suspended date not expected but found in replayed response. "'
+                '"Forwarding to mismatch handler", "status": "miss", '
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
             forward_to_mismatch_handler(
                 request.get("nino"),
@@ -321,14 +353,19 @@ def compare_responses(original, actual, request, lambda_client):
         else:
             logger.info(
                 'Suspended date is not expected and not present in either original or replayed response", '
-                '"status": "match'
+                '"status": "match", '
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
 
     logger.info(
         f'Comparing responses", '
-        f'"transaction_id": {request.get("transactionId")}, '
-        f'"from_date": {request.get("fromDate")}, '
-        f'"to_date": {request.get("toDate")}'
+        f'"nino": "{request.get("nino")}", '
+        f'"transaction_id": "{request.get("transactionId")}", '
+        f'"from_date": "{request.get("fromDate")}", '
+        f'"to_date": "{request.get("toDate")}'
     )
 
     expected_list = original["assessmentPeriod"]
@@ -343,9 +380,10 @@ def compare_responses(original, actual, request, lambda_client):
         if expected_record in actual_list:
             logger.info(
                 f'Match for assessment period", "status": "match", '
-                f'"transaction_id": {request["transactionId"]}, '
-                f'"AP_from_date": {expected_record.get("fromDate")},'
-                f'"AP_to_date": {expected_record.get("toDate")}'
+                f'"nino": "{request.get("nino")}", '
+                f'"transaction_id": "{request.get("transactionId")}", '
+                f'"from_date": "{request.get("fromDate")}", '
+                f'"to_date": "{request.get("toDate")}'
             )
 
             all_assessment_period["actual_list"].remove(expected_record)
@@ -354,11 +392,12 @@ def compare_responses(original, actual, request, lambda_client):
     for record in all_assessment_period["expected_list"]:
         match = False
         logger.info(
-            f"No match for original response assessment period in replayed assessment period. "
-            f'Forwarding to mismatch handler", "status": "miss", '
-            f'"transaction_id": {request["transactionId"]}, '
-            f'"AP_from_date": {record.get("fromDate")},'
-            f'"AP_to_date": {record.get("toDate")}'
+            f'No match for original response assessment period in replayed assessment period. ", '
+            f'"Forwarding to mismatch handler", "status": "miss", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
         )
         forward_to_mismatch_handler(
             request.get("nino"),
@@ -371,11 +410,12 @@ def compare_responses(original, actual, request, lambda_client):
     for record in all_assessment_period["actual_list"]:
         match = False
         logger.info(
-            f"No match for replayed assessment period in original response assessment period. "
-            f'Forwarding to mismatch handler", "status": "miss", '
-            f'"transaction_id": {request["transactionId"]}, '
-            f'"AP_from_date": {record.get("fromDate")},'
-            f'"AP_to_date": {record.get("toDate")}'
+            f'No match for replayed assessment period in original response assessment period.", '
+            f'"Forwarding to mismatch handler", "status": "miss", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
         )
         forward_to_mismatch_handler(
             request.get("nino"),

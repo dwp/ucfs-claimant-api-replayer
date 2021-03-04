@@ -247,22 +247,28 @@ class TestReplayer(unittest.TestCase):
 
                     mock_logger.info.assert_any_call(
                         'Suspended date is not expected and not present in either original or replayed response", '
-                        '"status": "match'
+                        '"status": "match", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_logger.info.assert_any_call(
                         f'Comparing responses", '
-                        f'"transaction_id": {request_parameters.get("transactionId")}, '
-                        f'"from_date": {request_parameters.get("fromDate")}, '
-                        f'"to_date": {request_parameters.get("toDate")}'
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     for record in original_data.get("assessmentPeriod", []):
                         mock_logger.info.assert_any_call(
                             f'Match for assessment period", "status": "match", '
-                            f'"transaction_id": {request_parameters.get("transactionId")}, '
-                            f'"AP_from_date": {record["fromDate"]},'
-                            f'"AP_to_date": {record["toDate"]}'
+                            f'"nino": "{request_parameters.get("nino")}", '
+                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                            f'"from_date": "{request_parameters["fromDate"]}", '
+                            f'"to_date": "{request_parameters["toDate"]}'
                         )
 
                     self.assertTrue(result)
@@ -271,6 +277,7 @@ class TestReplayer(unittest.TestCase):
         # Copying & leaving unchanged for happy comparison
         actual_data = deepcopy(original_data)
         actual_data["assessmentPeriod"][-1]["amount"]["takeHomePay"] = "54.66"
+        actual_data["assessmentPeriod"][-1]["toDate"] = "20210304"
 
         with mock.patch("replayer_lambda.replayer.logger") as mock_logger:
             with mock.patch("replayer_lambda.replayer.args") as mock_args:
@@ -283,30 +290,38 @@ class TestReplayer(unittest.TestCase):
 
                     mock_logger.info.assert_any_call(
                         'Suspended date is not expected and not present in either original or replayed response", '
-                        '"status": "match'
+                        '"status": "match", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_logger.info.assert_any_call(
                         f'Comparing responses", '
-                        f'"transaction_id": {request_parameters.get("transactionId")}, '
-                        f'"from_date": {request_parameters.get("fromDate")}, '
-                        f'"to_date": {request_parameters.get("toDate")}'
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     for record in original_data.get("assessmentPeriod", [])[:-1]:
-                        mock_logger.info.assert_any_call(
+                        mock_logger.info.assert_called_with(
                             f'Match for assessment period", "status": "match", '
-                            f'"transaction_id": {request_parameters.get("transactionId")}, '
-                            f'"AP_from_date": {record["fromDate"]},'
-                            f'"AP_to_date": {record["toDate"]}'
+                            f'"nino": "{request_parameters.get("nino")}", '
+                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                            f'"from_date": "{request_parameters.get("fromDate")}", '
+                            f'"to_date": "{request_parameters.get("toDate")}'
                         )
 
                     original_record = original_data.get("assessmentPeriod")[-1]
-                    mock_logger.info.assert_any_call(
-                        f'No match for replayed assessment period in original response assessment period. Forwarding to mismatch handler", "status": "miss", '
-                        f'"transaction_id": {request_parameters["transactionId"]}, '
-                        f'"AP_from_date": {original_record["fromDate"]},'
-                        f'"AP_to_date": {original_record["toDate"]}'
+                    mock_logger.info.assert_called_with(
+                        f'No match for original response assessment period in replayed assessment period. ", '
+                        f'"Forwarding to mismatch handler", "status": "miss", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters["transactionId"]}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_forward_func.assert_any_call(
@@ -318,11 +333,13 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     actual_record = actual_data.get("assessmentPeriod")[-1]
-                    mock_logger.info.assert_any_call(
-                        f'No match for replayed assessment period in original response assessment period. Forwarding to mismatch handler", "status": "miss", '
-                        f'"transaction_id": {request_parameters["transactionId"]}, '
-                        f'"AP_from_date": {actual_record["fromDate"]},'
-                        f'"AP_to_date": {actual_record["toDate"]}'
+                    mock_logger.info.assert_called_with(
+                        f'No match for replayed assessment period in original response assessment period.", '
+                        f'"Forwarding to mismatch handler", "status": "miss", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_forward_func.assert_called_with(
@@ -349,22 +366,28 @@ class TestReplayer(unittest.TestCase):
             )
 
             mock_logger.info.assert_any_call(
-                'Suspended date is a match", "status": "match'
+                'Suspended date is a match", "status": "match", '
+                f'"nino": "{request_parameters.get("nino")}", '
+                f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                f'"from_date": "{request_parameters.get("fromDate")}", '
+                f'"to_date": "{request_parameters.get("toDate")}'
             )
 
             mock_logger.info.assert_any_call(
                 f'Comparing responses", '
-                f'"transaction_id": {request_parameters.get("transactionId")}, '
-                f'"from_date": {request_parameters.get("fromDate")}, '
-                f'"to_date": {request_parameters.get("toDate")}'
+                f'"nino": "{request_parameters.get("nino")}", '
+                f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                f'"from_date": "{request_parameters.get("fromDate")}", '
+                f'"to_date": "{request_parameters.get("toDate")}'
             )
 
             for record in original_data.get("assessmentPeriod", []):
                 mock_logger.info.assert_any_call(
                     f'Match for assessment period", "status": "match", '
-                    f'"transaction_id": {request_parameters.get("transactionId")}, '
-                    f'"AP_from_date": {record["fromDate"]},'
-                    f'"AP_to_date": {record["toDate"]}'
+                    f'"nino": "{request_parameters.get("nino")}", '
+                    f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                    f'"from_date": "{request_parameters.get("fromDate")}", '
+                    f'"to_date": "{request_parameters.get("toDate")}'
                 )
 
             self.assertTrue(result)
@@ -389,7 +412,12 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     mock_logger.info.assert_any_call(
-                        'Suspended date expected but does not match or was not found in replayed response. Forwarding to mismatch handler", "status": "miss'
+                        'Suspended date expected but does not match or was not found in replayed response.", '
+                        '"Forwarding to mismatch handler", "status": "miss", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_forward_func.assert_called_with(
@@ -402,17 +430,19 @@ class TestReplayer(unittest.TestCase):
 
                     mock_logger.info.assert_any_call(
                         f'Comparing responses", '
-                        f'"transaction_id": {request_parameters.get("transactionId")}, '
-                        f'"from_date": {request_parameters.get("fromDate")}, '
-                        f'"to_date": {request_parameters.get("toDate")}'
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     for record in original_data.get("assessmentPeriod", []):
                         mock_logger.info.assert_any_call(
                             f'Match for assessment period", "status": "match", '
-                            f'"transaction_id": {request_parameters.get("transactionId")}, '
-                            f'"AP_from_date": {record["fromDate"]},'
-                            f'"AP_to_date": {record["toDate"]}'
+                            f'"nino": "{request_parameters.get("nino")}", '
+                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                            f'"from_date": "{request_parameters["fromDate"]}", '
+                            f'"to_date": "{request_parameters["toDate"]}'
                         )
 
                     self.assertFalse(result)
@@ -438,8 +468,12 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     mock_logger.info.assert_any_call(
-                        "Suspended date expected but does not match or was not found in replayed response. "
-                        'Forwarding to mismatch handler", "status": "miss'
+                        'Suspended date expected but does not match or was not found in replayed response.", '
+                        '"Forwarding to mismatch handler", "status": "miss", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     mock_forward_func.assert_called_with(
@@ -452,17 +486,19 @@ class TestReplayer(unittest.TestCase):
 
                     mock_logger.info.assert_any_call(
                         f'Comparing responses", '
-                        f'"transaction_id": {request_parameters.get("transactionId")}, '
-                        f'"from_date": {request_parameters.get("fromDate")}, '
-                        f'"to_date": {request_parameters.get("toDate")}'
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     for record in original_data.get("assessmentPeriod", []):
                         mock_logger.info.assert_any_call(
                             f'Match for assessment period", "status": "match", '
-                            f'"transaction_id": {request_parameters.get("transactionId")}, '
-                            f'"AP_from_date": {record["fromDate"]},'
-                            f'"AP_to_date": {record["toDate"]}'
+                            f'"nino": "{request_parameters.get("nino")}", '
+                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                            f'"from_date": "{request_parameters["fromDate"]}", '
+                            f'"to_date": "{request_parameters["toDate"]}'
                         )
 
                     self.assertFalse(result)
@@ -483,10 +519,13 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     mock_logger.info.assert_any_call(
-                        f"Claimant found doesn't match, "
-                        f'expected {original_data["claimantFound"]} from replayed response '
-                        f'but got {actual_data["claimantFound"]}. '
-                        f'Forwarding to mismatch handler", "status": "miss'
+                        f'Claimant found does not match, ", '
+                        f'"expected {original_data["claimantFound"]} from replayed response but got {actual_data["claimantFound"]}.", '
+                        f'"Forwarding to mismatch handler", "status": "miss", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters["fromDate"]}", '
+                        f'"to_date": "{request_parameters["toDate"]}'
                     )
 
                     mock_forward_func.assert_called_with(
@@ -499,22 +538,28 @@ class TestReplayer(unittest.TestCase):
 
                     mock_logger.info.assert_any_call(
                         'Suspended date is not expected and not present in either original or replayed response", '
-                        '"status": "match'
+                        '"status": "match", '
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters["fromDate"]}", '
+                        f'"to_date": "{request_parameters["toDate"]}'
                     )
 
                     mock_logger.info.assert_any_call(
                         f'Comparing responses", '
-                        f'"transaction_id": {request_parameters.get("transactionId")}, '
-                        f'"from_date": {request_parameters.get("fromDate")}, '
-                        f'"to_date": {request_parameters.get("toDate")}'
+                        f'"nino": "{request_parameters.get("nino")}", '
+                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                        f'"from_date": "{request_parameters.get("fromDate")}", '
+                        f'"to_date": "{request_parameters.get("toDate")}'
                     )
 
                     for record in original_data.get("assessmentPeriod", []):
                         mock_logger.info.assert_any_call(
                             f'Match for assessment period", "status": "match", '
-                            f'"transaction_id": {request_parameters.get("transactionId")}, '
-                            f'"AP_from_date": {record["fromDate"]},'
-                            f'"AP_to_date": {record["toDate"]}'
+                            f'"nino": "{request_parameters.get("nino")}", '
+                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
+                            f'"from_date": "{request_parameters["fromDate"]}", '
+                            f'"to_date": "{request_parameters["toDate"]}'
                         )
 
                     self.assertFalse(result)
