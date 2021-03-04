@@ -306,7 +306,7 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     for record in original_data.get("assessmentPeriod", [])[:-1]:
-                        mock_logger.info.assert_called_with(
+                        mock_logger.info.assert_any_call(
                             f'Match for assessment period", "status": "match", '
                             f'"nino": "{request_parameters.get("nino")}", '
                             f'"transaction_id": "{request_parameters.get("transactionId")}", '
@@ -315,7 +315,7 @@ class TestReplayer(unittest.TestCase):
                         )
 
                     original_record = original_data.get("assessmentPeriod")[-1]
-                    mock_logger.info.assert_called_with(
+                    mock_logger.info.assert_any_call(
                         f'No match for original response assessment period in replayed assessment period. ", '
                         f'"Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
@@ -333,7 +333,7 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     actual_record = actual_data.get("assessmentPeriod")[-1]
-                    mock_logger.info.assert_called_with(
+                    mock_logger.info.assert_any_call(
                         f'No match for replayed assessment period in original response assessment period.", '
                         f'"Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
@@ -554,7 +554,7 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     for record in original_data.get("assessmentPeriod", []):
-                        mock_logger.info.assert_any_call(
+                        mock_logger.info.assert_called_with(
                             f'Match for assessment period", "status": "match", '
                             f'"nino": "{request_parameters.get("nino")}", '
                             f'"transaction_id": "{request_parameters.get("transactionId")}", '
@@ -563,6 +563,7 @@ class TestReplayer(unittest.TestCase):
                         )
 
                     self.assertFalse(result)
+
 
     def test_forward_mismatch_handler_with_mismatch_data(self):
         args = mock.MagicMock()
