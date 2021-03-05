@@ -320,7 +320,7 @@ def compare_responses(original, actual, request, lambda_client):
         else:
             match = False
             logger.info(
-                'Suspended date expected but does not match or was not found in replayed response. '
+                "Suspended date expected but does not match or was not found in replayed response. "
                 'Forwarding to mismatch handler", "status": "miss", '
                 f'"nino": "{request.get("nino")}", '
                 f'"transaction_id": "{request.get("transactionId")}", '
@@ -339,7 +339,7 @@ def compare_responses(original, actual, request, lambda_client):
         if actual.get("suspendedDate"):
             match = False
             logger.info(
-                'Suspended date not expected but found in replayed response. '
+                "Suspended date not expected but found in replayed response. "
                 'Forwarding to mismatch handler", "status": "miss", '
                 f'"nino": "{request.get("nino")}", '
                 f'"transaction_id": "{request.get("transactionId")}", '
@@ -396,7 +396,7 @@ def compare_responses(original, actual, request, lambda_client):
     for record in all_assessment_period["expected_list"]:
         match = False
         logger.info(
-            f'No match for original response assessment period in replayed assessment period. '
+            f"No match for original response assessment period in replayed assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
             f'"nino": "{request.get("nino")}", '
             f'"transaction_id": "{request.get("transactionId")}", '
@@ -414,7 +414,7 @@ def compare_responses(original, actual, request, lambda_client):
     for record in all_assessment_period["actual_list"]:
         match = False
         logger.info(
-            f'No match for replayed assessment period in original response assessment period. '
+            f"No match for replayed assessment period in original response assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
             f'"nino": "{request.get("nino")}", '
             f'"transaction_id": "{request.get("transactionId")}", '

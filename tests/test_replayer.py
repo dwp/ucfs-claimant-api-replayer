@@ -316,7 +316,7 @@ class TestReplayer(unittest.TestCase):
 
                     original_record = original_data.get("assessmentPeriod")[-1]
                     mock_logger.info.assert_any_call(
-                        f'No match for original response assessment period in replayed assessment period. '
+                        f"No match for original response assessment period in replayed assessment period. "
                         f'Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
                         f'"transaction_id": "{request_parameters["transactionId"]}", '
@@ -334,7 +334,7 @@ class TestReplayer(unittest.TestCase):
 
                     actual_record = actual_data.get("assessmentPeriod")[-1]
                     mock_logger.info.assert_any_call(
-                        f'No match for replayed assessment period in original response assessment period. '
+                        f"No match for replayed assessment period in original response assessment period. "
                         f'Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
                         f'"transaction_id": "{request_parameters.get("transactionId")}", '
@@ -412,7 +412,7 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     mock_logger.info.assert_any_call(
-                        'Suspended date expected but does not match or was not found in replayed response. '
+                        "Suspended date expected but does not match or was not found in replayed response. "
                         'Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
                         f'"transaction_id": "{request_parameters.get("transactionId")}", '
@@ -468,7 +468,7 @@ class TestReplayer(unittest.TestCase):
                     )
 
                     mock_logger.info.assert_any_call(
-                        'Suspended date expected but does not match or was not found in replayed response. '
+                        "Suspended date expected but does not match or was not found in replayed response. "
                         'Forwarding to mismatch handler", "status": "miss", '
                         f'"nino": "{request_parameters.get("nino")}", '
                         f'"transaction_id": "{request_parameters.get("transactionId")}", '
