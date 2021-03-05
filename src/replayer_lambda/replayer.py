@@ -197,8 +197,10 @@ def replay_original_request(request_auth, original_request, args):
         "X-Amz-Date": get_date_time_now(),
     }
 
-    logger.info(f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}", '
-                f'"original_request": "{original_request}')
+    logger.info(
+        f'Requesting data from AWS API", "api_hostname": "{args.api_hostname}", '
+        f'"original_request": "{original_request}'
+    )
 
     try:
         request = requests.post(
@@ -289,7 +291,6 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
 
 def compare_responses(original, actual, request, lambda_client):
     match = True
-
     if original["claimantFound"] != actual["claimantFound"]:
         match = False
         logger.info(
