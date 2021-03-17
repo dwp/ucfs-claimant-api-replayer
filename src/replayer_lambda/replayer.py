@@ -292,9 +292,7 @@ def decrypt_response(response: dict, request: dict, region: str) -> dict:
 
 
 def compare_responses(original, actual, request, lambda_client):
-    match = True
     if original["claimantFound"] != actual["claimantFound"]:
-        match = False
         logger.info(
             f'Claimant found does not match, expected {original["claimantFound"]} from replayed response '
             f'but got {actual["claimantFound"]}. Forwarding to mismatch handler", '
@@ -307,6 +305,7 @@ def compare_responses(original, actual, request, lambda_client):
         forward_to_mismatch_handler(
             request.get("nino"), request.get("transactionId"), "", lambda_client, args
         )
+        return False
 
     if original.get("suspendedDate"):
         if original.get("suspendedDate") == actual.get("suspendedDate"):
@@ -318,7 +317,6 @@ def compare_responses(original, actual, request, lambda_client):
                 f'"to_date": "{request.get("toDate")}'
             )
         else:
-            match = False
             logger.info(
                 "Suspended date expected but does not match or was not found in replayed response. "
                 'Forwarding to mismatch handler", "status": "miss", '
@@ -334,35 +332,33 @@ def compare_responses(original, actual, request, lambda_client):
                 lambda_client,
                 args,
             )
-
+            return False
+    elif actual.get("suspendedDate"):
+        logger.info(
+            "Suspended date not expected but found in replayed response. "
+            'Forwarding to mismatch handler", "status": "miss", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
+        )
+        forward_to_mismatch_handler(
+            request.get("nino"),
+            request.get("transactionId"),
+            "",
+            lambda_client,
+            args,
+        )
+        return False
     else:
-        if actual.get("suspendedDate"):
-            match = False
-            logger.info(
-                "Suspended date not expected but found in replayed response. "
-                'Forwarding to mismatch handler", "status": "miss", '
-                f'"nino": "{request.get("nino")}", '
-                f'"transaction_id": "{request.get("transactionId")}", '
-                f'"from_date": "{request.get("fromDate")}", '
-                f'"to_date": "{request.get("toDate")}'
-            )
-            forward_to_mismatch_handler(
-                request.get("nino"),
-                request.get("transactionId"),
-                "",
-                lambda_client,
-                args,
-            )
-
-        else:
-            logger.info(
-                'Suspended date is not expected and not present in either original or replayed response", '
-                '"status": "match", '
-                f'"nino": "{request.get("nino")}", '
-                f'"transaction_id": "{request.get("transactionId")}", '
-                f'"from_date": "{request.get("fromDate")}", '
-                f'"to_date": "{request.get("toDate")}'
-            )
+        logger.info(
+            'Suspended date is not expected and not present in either original or replayed response", '
+            '"status": "match", '
+            f'"nino": "{request.get("nino")}", '
+            f'"transaction_id": "{request.get("transactionId")}", '
+            f'"from_date": "{request.get("fromDate")}", '
+            f'"to_date": "{request.get("toDate")}'
+        )
 
     logger.info(
         f'Comparing responses", '
@@ -393,8 +389,8 @@ def compare_responses(original, actual, request, lambda_client):
             all_assessment_period["actual_list"].remove(expected_record)
             all_assessment_period["expected_list"].remove(expected_record)
 
+    assessment_periods_match = True
     for record in all_assessment_period["expected_list"]:
-        match = False
         logger.info(
             f"No match for original response assessment period in replayed assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
@@ -410,9 +406,9 @@ def compare_responses(original, actual, request, lambda_client):
             lambda_client,
             args,
         )
+        assessment_periods_match = False
 
     for record in all_assessment_period["actual_list"]:
-        match = False
         logger.info(
             f"No match for replayed assessment period in original response assessment period. "
             f'Forwarding to mismatch handler", "status": "miss", '
@@ -428,8 +424,9 @@ def compare_responses(original, actual, request, lambda_client):
             lambda_client,
             args,
         )
+        assessment_periods_match = False
 
-    return match
+    return assessment_periods_match
 
 
 def forward_to_mismatch_handler(
