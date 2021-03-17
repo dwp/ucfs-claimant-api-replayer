@@ -428,23 +428,6 @@ class TestReplayer(unittest.TestCase):
                         mock_args,
                     )
 
-                    mock_logger.info.assert_any_call(
-                        f'Comparing responses", '
-                        f'"nino": "{request_parameters.get("nino")}", '
-                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                        f'"from_date": "{request_parameters.get("fromDate")}", '
-                        f'"to_date": "{request_parameters.get("toDate")}'
-                    )
-
-                    for record in original_data.get("assessmentPeriod", []):
-                        mock_logger.info.assert_any_call(
-                            f'Match for assessment period", "status": "match", '
-                            f'"nino": "{request_parameters.get("nino")}", '
-                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                            f'"from_date": "{request_parameters["fromDate"]}", '
-                            f'"to_date": "{request_parameters["toDate"]}'
-                        )
-
                     self.assertFalse(result)
 
     def test_compare_responses_with_suspendedDate_present_in_both_but_mismatch(self):
@@ -484,23 +467,6 @@ class TestReplayer(unittest.TestCase):
                         mock_args,
                     )
 
-                    mock_logger.info.assert_any_call(
-                        f'Comparing responses", '
-                        f'"nino": "{request_parameters.get("nino")}", '
-                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                        f'"from_date": "{request_parameters.get("fromDate")}", '
-                        f'"to_date": "{request_parameters.get("toDate")}'
-                    )
-
-                    for record in original_data.get("assessmentPeriod", []):
-                        mock_logger.info.assert_any_call(
-                            f'Match for assessment period", "status": "match", '
-                            f'"nino": "{request_parameters.get("nino")}", '
-                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                            f'"from_date": "{request_parameters["fromDate"]}", '
-                            f'"to_date": "{request_parameters["toDate"]}'
-                        )
-
                     self.assertFalse(result)
 
     def test_compare_responses_with_claimantFound_mismatch(self):
@@ -535,32 +501,6 @@ class TestReplayer(unittest.TestCase):
                         lambda_client,
                         mock_args,
                     )
-
-                    mock_logger.info.assert_any_call(
-                        'Suspended date is not expected and not present in either original or replayed response", '
-                        '"status": "match", '
-                        f'"nino": "{request_parameters.get("nino")}", '
-                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                        f'"from_date": "{request_parameters["fromDate"]}", '
-                        f'"to_date": "{request_parameters["toDate"]}'
-                    )
-
-                    mock_logger.info.assert_any_call(
-                        f'Comparing responses", '
-                        f'"nino": "{request_parameters.get("nino")}", '
-                        f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                        f'"from_date": "{request_parameters.get("fromDate")}", '
-                        f'"to_date": "{request_parameters.get("toDate")}'
-                    )
-
-                    for record in original_data.get("assessmentPeriod", []):
-                        mock_logger.info.assert_called_with(
-                            f'Match for assessment period", "status": "match", '
-                            f'"nino": "{request_parameters.get("nino")}", '
-                            f'"transaction_id": "{request_parameters.get("transactionId")}", '
-                            f'"from_date": "{request_parameters["fromDate"]}", '
-                            f'"to_date": "{request_parameters["toDate"]}'
-                        )
 
                     self.assertFalse(result)
 
