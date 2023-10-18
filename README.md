@@ -1,3 +1,5 @@
+# DO NOT USE THIS REPO - MIGRATED TO GITLAB
+
 # ucfs-claimant-api-replayer
 
 ## An AWS lambda which receives requests and a response payload, to replay against the v1 UCFS Claimant API in London to assert responses are equal.
